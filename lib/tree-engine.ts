@@ -16,10 +16,7 @@
 // ────────────────────────────────────────────────────────────────
 
 import { prisma } from "./prisma"
-
-import {
-  CallStatus,
-} from "@/app/generated/prisma"
+import { CallStatus } from "@prisma/client"
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -415,7 +412,7 @@ export async function createWeeklyCycle() {
         now.getTime() -
         startOfYear.getTime()
       ) /
-        86400000 +
+      86400000 +
       startOfYear.getUTCDay() +
       1
     ) / 7

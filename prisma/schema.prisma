@@ -1,0 +1,212 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String   @id @default(cuid())
+
+  telegramId     String   @unique
+  fullName       String
+
+  baptismName    String?
+  phoneNumber    String?
+  username       String?
+  address        String?
+
+  role           Role @default(MEMBER)
+
+  status         MemberStatus @default(ACTIVE)
+
+  active         Boolean @default(true)
+
+  joinedAt       DateTime @default(now())
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  treeNodes      TreeNode[]
+  poolEntries    WaitingPool[]
+
+  @@index([telegramId])
+  @@index([status])
+}
+
+model WeeklyCycle {
+  id                String @id @default(cuid())
+
+  weekNumber        Int
+  year              Int
+
+  phase             CyclePhase @default(BUILDING)
+
+  generatedAt       DateTime?
+  previewAt         DateTime?
+
+  startDate         DateTime?
+  endDate           DateTime?
+
+  isLocked          Boolean @default(false)
+
+  treeNodes         TreeNode[]
+  callEdges         CallEdge[]
+  waitingPool       WaitingPool[]
+
+  snapshot          WeeklySnapshot?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([weekNumber, year])
+
+  @@index([phase])
+}
+
+model TreeNode {
+  id                String @id @default(cuid())
+
+  cycleId           String
+  cycle             WeeklyCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  userId            String
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  position          String
+
+  parentNodeId      String?
+
+  parent            TreeNode? @relation("TreeHierarchy", fields: [parentNodeId], references: [id])
+
+  children          TreeNode[] @relation("TreeHierarchy")
+
+  level             Int
+
+  outgoingCalls     CallEdge[] @relation("CallerNode")
+  incomingCalls     CallEdge[] @relation("CalleeNode")
+
+  createdAt         DateTime @default(now())
+
+  @@unique([cycleId, userId])
+  @@unique([cycleId, position])
+
+  @@index([cycleId])
+  @@index([userId])
+  @@index([parentNodeId])
+  @@index([position])
+}
+
+model CallEdge {
+  id                String @id @default(cuid())
+
+  cycleId           String
+  cycle             WeeklyCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  callerNodeId      String
+  calleeNodeId      String
+
+  callerNode        TreeNode @relation("CallerNode", fields: [callerNodeId], references: [id], onDelete: Cascade)
+
+  calleeNode        TreeNode @relation("CalleeNode", fields: [calleeNodeId], references: [id], onDelete: Cascade)
+
+  status            CallStatus @default(UNCALLED)
+
+  calledAt          DateTime?
+  answeredAt        DateTime?
+
+  retryCount        Int @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([cycleId])
+  @@index([callerNodeId])
+  @@index([calleeNodeId])
+  @@index([status])
+}
+
+model WaitingPool {
+  id                String @id @default(cuid())
+
+  cycleId           String
+  cycle             WeeklyCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  userId            String
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  position          Int
+
+  addedAt           DateTime @default(now())
+
+  status            PoolStatus @default(WAITING)
+
+  createdAt         DateTime @default(now())
+
+  @@unique([cycleId, userId])
+
+  @@index([cycleId])
+  @@index([status])
+}
+
+model WeeklySnapshot {
+  id                String @id @default(cuid())
+
+  cycleId           String @unique
+
+  cycle             WeeklyCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  weekNumber        Int
+  year              Int
+
+  totalMembers      Int
+
+  totalCalls        Int
+  answeredCalls     Int
+  noAnswerCalls     Int
+
+  participationPct  Float
+
+  treeSnapshot      Json
+  callLog           Json
+
+  createdAt         DateTime @default(now())
+
+  @@index([weekNumber])
+  @@index([year])
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum CyclePhase {
+  BUILDING
+  PREVIEW
+  ACTIVE
+  CLOSED
+  HISTORY
+}
+
+enum CallStatus {
+  UNCALLED
+  CALLED
+  ANSWERED
+  NO_ANSWER
+}
+
+enum PoolStatus {
+  WAITING
+  ASSIGNED
+  SKIPPED
+}

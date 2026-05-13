@@ -5,14 +5,25 @@ import { useState } from "react";
 
 export default function MinbabatPage() {
     const [selectedDay, setSelectedDay] = useState("እሁድ");
-    const [selectedCategory, setSelectedCategory] = useState("የሐዋሪያት ስራ");
+    const [selectedMonth, setSelectedMonth] = useState("ግንቦት");
+    const [selectedDate, setSelectedDate] = useState("2");
 
-    const categories = [
-        "የቅዱስ ጳውሎስ መልዕክት",
-        "መልዕክታት",
-        "የሐዋሪያት ስራ",
-        "ወንጌል",
+    const months = [
+        "መስከረም",
+        "ጥቅምት",
+        "ኅዳር",
+        "ታኅሣሥ",
+        "ጥር",
+        "የካቲት",
+        "መጋቢት",
+        "ሚያዝያ",
+        "ግንቦት",
+        "ሰኔ",
+        "ሐምሌ",
+        "ነሐሴ",
     ];
+
+    const dates = Array.from({ length: 30 }, (_, i) => (i + 1).toString());
 
     const readings = {
         እሁድ: {
@@ -33,7 +44,7 @@ export default function MinbabatPage() {
             ወንጌል: {
                 title: "ማቴዎስ 5:1-12",
                 content:
-                    "ብዙ ሰዎችን ባየ ጊዜ ወደ ተራራ ወጣ። ተቀምጦም ደቀ መዛሙርቱ ወደ እርሱ መጡ። አፉንም ከፍቶ እንዲህ ብሎ አስተማራቸው፦ መንፈሳቸው ድሀ የሆኑ ብፁዓን ናቸው...",
+                    "ብዙ ሰዎችን ባየ ጊዜ ወደ ተራራ ወጣ። ተቀምጦም ደቀ መዛሙርቱ ወደ እርሱ መጡ। አፉንም ከፍቶ እንዲህ ብሎ አስተማራቸው፦ መንፈሳቸው ድሀ የሆኑ ብፁዓን ናቸው...",
             },
         },
         ሰኞ: {
@@ -147,11 +158,12 @@ export default function MinbabatPage() {
     };
 
     const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
-
-    const currentReading =
-        readings[selectedDay as keyof typeof readings][
-        selectedCategory as keyof (typeof readings)["እሁድ"]
-        ];
+    const categories = [
+        "የቅዱስ ጳውሎስ መልዕክት",
+        "መልዕክታት",
+        "የሐዋሪያት ስራ",
+        "ወንጌል",
+    ];
 
     return (
         <div className="min-h-screen pb-20 bg-gray-50">
@@ -167,59 +179,105 @@ export default function MinbabatPage() {
                     </p>
                 </div>
 
-                {/* Day Selector */}
-                <div className="bg-white rounded-lg shadow p-4">
+                {/* Date Selectors */}
+                <div className="bg-white rounded-lg shadow p-4 space-y-4">
                     <div className="flex items-center gap-2 mb-3">
                         <Calendar className="w-5 h-5 text-gray-600" />
                         <h2 className="font-semibold text-gray-900">የቀን ምርጫ</h2>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
-                        {days.map((day) => (
-                            <button
-                                key={day}
-                                onClick={() => setSelectedDay(day)}
-                                className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
+
+                    {/* Day of Week */}
+                    <div>
+                        <p className="text-xs text-gray-500 mb-2">የሳምንት ቀን</p>
+                        <div className="grid grid-cols-4 gap-2">
+                            {days.map((day) => (
+                                <button
+                                    key={day}
+                                    onClick={() => setSelectedDay(day)}
+                                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
                                         ? "bg-green-600 text-white"
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                    }`}
-                            >
-                                {day}
-                            </button>
-                        ))}
+                                        }`}
+                                >
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                {/* Category Selector */}
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="space-y-2">
-                        {categories.map((category) => (
-                            <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category)}
-                                className={`w-full py-3 px-4 rounded-lg text-sm font-medium transition-colors text-right ${selectedCategory === category
-                                        ? "bg-green-600 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                    }`}
-                            >
-                                {category}
-                            </button>
-                        ))}
+                    {/* Month */}
+                    <div>
+                        <p className="text-xs text-gray-500 mb-2">ወር</p>
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                            {months.map((month) => (
+                                <option key={month} value={month}>
+                                    {month}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                </div>
 
-                {/* Reading Content */}
-                <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-sm font-semibold text-green-700 mb-3">
-                        {selectedCategory}
-                    </h3>
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">
-                        {currentReading.title}
-                    </h2>
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-gray-800 leading-relaxed whitespace-pre-line">
-                            {currentReading.content}
+                    {/* Date */}
+                    <div>
+                        <p className="text-xs text-gray-500 mb-2">ቀን</p>
+                        <select
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                            {dates.map((date) => (
+                                <option key={date} value={date}>
+                                    {date}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="text-center pt-2 border-t">
+                        <p className="text-sm font-medium text-gray-700">
+                            {selectedMonth} {selectedDate} - {selectedDay}
                         </p>
                     </div>
+                </div>
+
+                {/* Category Readings */}
+                <div className="space-y-3">
+                    {categories.map((category) => {
+                        const currentReading =
+                            readings[selectedDay as keyof typeof readings][
+                            category as keyof (typeof readings)["እሁድ"]
+                            ];
+
+                        return (
+                            <div key={category} className="bg-white rounded-lg shadow">
+                                <button
+                                    className="w-full py-4 px-5 text-right font-medium text-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+                                    onClick={(e) => {
+                                        const content = e.currentTarget.nextElementSibling;
+                                        if (content) {
+                                            content.classList.toggle("hidden");
+                                        }
+                                    }}
+                                >
+                                    {category}
+                                </button>
+                                <div className="hidden px-5 pb-5">
+                                    <h3 className="text-sm font-semibold text-green-700 mb-2">
+                                        {currentReading.title}
+                                    </h3>
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <p className="text-gray-800 leading-relaxed whitespace-pre-line">
+                                            {currentReading.content}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Info Card */}

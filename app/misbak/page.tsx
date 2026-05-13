@@ -4,7 +4,27 @@ import { Book, Calendar } from "lucide-react";
 import { useState } from "react";
 
 export default function MisbakPage() {
-  const [selectedDate, setSelectedDate] = useState("የግንቦት 2");
+  const [selectedDay, setSelectedDay] = useState("እሁድ");
+  const [selectedMonth, setSelectedMonth] = useState("ግንቦት");
+  const [selectedDate, setSelectedDate] = useState("2");
+
+  const months = [
+    "መስከረም",
+    "ጥቅምት",
+    "ኅዳር",
+    "ታኅሣሥ",
+    "ጥር",
+    "የካቲት",
+    "መጋቢት",
+    "ሚያዝያ",
+    "ግንቦት",
+    "ሰኔ",
+    "ሐምሌ",
+    "ነሐሴ",
+  ];
+
+  const dates = Array.from({ length: 30 }, (_, i) => (i + 1).toString());
+  const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
 
   const misbakData = [
     {
@@ -51,8 +71,7 @@ export default function MisbakPage() {
     },
   ];
 
-  const dates = misbakData.map((item) => item.date);
-  const selectedMisbak = misbakData.find((item) => item.date === selectedDate);
+  const selectedMisbak = misbakData[0]; // Use first one as default
 
   return (
     <div className="min-h-screen pb-20 bg-gray-50">
@@ -68,25 +87,68 @@ export default function MisbakPage() {
           </p>
         </div>
 
-        {/* Date Selector */}
-        <div className="bg-white rounded-lg shadow p-4">
+        {/* Date Selectors */}
+        <div className="bg-white rounded-lg shadow p-4 space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-5 h-5 text-gray-600" />
             <h2 className="font-semibold text-gray-900">የቀን ምርጫ</h2>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {dates.map((date) => (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDate === date
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-              >
-                {date}
-              </button>
-            ))}
+
+          {/* Day of Week */}
+          <div>
+            <p className="text-xs text-gray-500 mb-2">የሳምንት ቀን</p>
+            <div className="grid grid-cols-4 gap-2">
+              {days.map((day) => (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Month */}
+          <div>
+            <p className="text-xs text-gray-500 mb-2">ወር</p>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {months.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date */}
+          <div>
+            <p className="text-xs text-gray-500 mb-2">ቀን</p>
+            <select
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {dates.map((date) => (
+                <option key={date} value={date}>
+                  {date}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="text-center pt-2 border-t">
+            <p className="text-sm font-medium text-gray-700">
+              {selectedMonth} {selectedDate} - {selectedDay}
+            </p>
           </div>
         </div>
 
@@ -102,9 +164,7 @@ export default function MisbakPage() {
 
             {/* Geez Text */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">
-                ግዕዝ፡-
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">ግዕዝ፡-</h3>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-gray-800 leading-relaxed whitespace-pre-wrap text-lg">
                   {selectedMisbak.geez}
@@ -114,9 +174,7 @@ export default function MisbakPage() {
 
             {/* Translation */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">
-                ትርጉም፡-
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">ትርጉም፡-</h3>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                   {selectedMisbak.translation}

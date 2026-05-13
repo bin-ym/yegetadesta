@@ -67,7 +67,7 @@ export default function Home() {
   // Development mode - show instructions
   if (isDev) {
     return (
-      <div className="min-h-screen p-4 bg-gray-50">
+      <div className="min-h-screen pb-20 p-4 bg-gray-50">
         <div className="max-w-2xl mx-auto space-y-4 pt-8">
           <div className="bg-white rounded-lg shadow p-6">
             <h1 className="text-2xl font-bold mb-4">✝ ቅዳሴ ጥሪ - Kidase Call</h1>

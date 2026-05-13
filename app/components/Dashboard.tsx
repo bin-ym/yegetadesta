@@ -93,7 +93,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
   };
 
   return (
-    <div className="min-h-screen p-4 pb-20">
+    <div className="min-h-screen pb-20 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">

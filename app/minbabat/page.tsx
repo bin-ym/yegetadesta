@@ -1,161 +1,37 @@
 "use client";
 
 import { BookOpen, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getCurrentWeekEthiopianDates } from "@/lib/ethiopian-calendar";
 
 export default function MinbabatPage() {
     const [selectedDay, setSelectedDay] = useState("እሁድ");
-    const [selectedMonth, setSelectedMonth] = useState("ግንቦት");
-    const [selectedDate, setSelectedDate] = useState("2");
+    const [weekDates, setWeekDates] = useState<{ [key: string]: any }>({});
+    const [readings, setReadings] = useState<any>({});
+    const [loading, setLoading] = useState(true);
 
-    const months = [
-        "መስከረም",
-        "ጥቅምት",
-        "ኅዳር",
-        "ታኅሣሥ",
-        "ጥር",
-        "የካቲት",
-        "መጋቢት",
-        "ሚያዝያ",
-        "ግንቦት",
-        "ሰኔ",
-        "ሐምሌ",
-        "ነሐሴ",
-    ];
+    useEffect(() => {
+        // Get Ethiopian dates for current week
+        const dates = getCurrentWeekEthiopianDates();
+        setWeekDates(dates);
 
-    const dates = Array.from({ length: 30 }, (_, i) => (i + 1).toString());
+        // Set today as default
+        const today = new Date();
+        const dayNames = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
+        setSelectedDay(dayNames[today.getDay()]);
 
-    const readings = {
-        እሁድ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 8:1-17",
-                content:
-                    "ስለዚህ አሁን በክርስቶስ ኢየሱስ ላሉት ምንም ፍርድ የለም። የመንፈስ ህግ በክርስቶስ ኢየሱስ ከኃጢአት ህግና ከሞት ነፃ አወጣኝና።",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 1:1-12",
-                content: "የኢየሱስ ክርስቶስ ሐዋርያ የሆነው ጴጥሮስ...",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 2:1-13",
-                content:
-                    "የጰንጠቆስጤ በዓል ሲደርስ ሁሉም በአንድ ቦታ ተሰብስበው ነበር። በድንገት ከሰማይ ጠንካራ ነፋስ እንደሚነፍስ የሚመስል ድምፅ መጣ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:1-12",
-                content:
-                    "ብዙ ሰዎችን ባየ ጊዜ ወደ ተራራ ወጣ። ተቀምጦም ደቀ መዛሙርቱ ወደ እርሱ መጡ। አፉንም ከፍቶ እንዲህ ብሎ አስተማራቸው፦ መንፈሳቸው ድሀ የሆኑ ብፁዓን ናቸው...",
-            },
-        },
-        ሰኞ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 8:18-39",
-                content: "የአሁኑ ጊዜ መከራ ከሚገለጥልን ክብር ጋር እንደማይወዳደር አስባለሁ...",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 1:13-25",
-                content: "ስለዚህ የአእምሮአችሁን ወገብ አስሩ...",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 2:14-36",
-                content: "ጴጥሮስ ከአስራ አንዱ ጋር ቆሞ ድምፁን ከፍ አድርጎ እንዲህ አለ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:13-20",
-                content: "እናንተ የምድር ጨው ናችሁ። ጨው ጣዕሙን ቢያጣ በምን ይጣፋል?",
-            },
-        },
-        ማክሰኞ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 9:1-18",
-                content: "በክርስቶስ እውነትን እናገራለሁ አልዋሸም...",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 2:1-10",
-                content: "ስለዚህ ክፋትንና ሁሉንም ተንኮልን...",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 2:37-47",
-                content: "ይህን ሲሰሙ በልባቸው ተወጉ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:21-26",
-                content: "አትግደል ተብሎ ለቀደምቶች መነገራቸውን ሰምታችኋል...",
-            },
-        },
-        ረቡዕ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 9:19-33",
-                content: "ታዲያ ለምን ይወቅሳል ትለኛለህ? ፈቃዱን ማን ተቃወመ?",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 2:11-25",
-                content: "ወዳጆቼ ሆይ፣ እንደ መጻተኞችና እንደ ተጓዦች...",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 3:1-10",
-                content: "ጴጥሮስና ዮሐንስ በዘጠኝ ሰዓት ወደ መቅደስ ለመጸለይ ወጡ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:27-32",
-                content: "አታመንዝር ተብሎ መነገሩን ሰምታችኋል...",
-            },
-        },
-        ሐሙስ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 10:1-21",
-                content: "ወንድሞች ሆይ፣ የልቤ ምኞትና ለእግዚአብሔር ለእስራኤል የምለምነው ይድኑ ዘንድ ነው...",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 3:1-12",
-                content: "እንዲሁም ሚስቶች ለባሎቻችሁ ተገዙ...",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 3:11-26",
-                content: "ሰውየው ጴጥሮስንና ዮሐንስን ሲያዝ ሕዝቡ ሁሉ በመደነቅ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:33-37",
-                content: "እንደገና አትምሉ ተብሎ ለቀደምቶች መነገራቸውን ሰምታችኋል...",
-            },
-        },
-        አርብ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 11:1-24",
-                content: "ታዲያ እግዚአብሔር ሕዝቡን ጣለው እላለሁ? በፍፁም አይደለም!",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 3:13-22",
-                content: "ለበጎ ነገር ቢቀናነቱ ማን ይጎዳችኋል?",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 4:1-12",
-                content: "ከሕዝቡ ጋር እያወሩ እያሉ ካህናትና የመቅደሱ አለቃ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:38-42",
-                content: "ዓይን ስለ ዓይን ጥርስ ስለ ጥርስ ተብሎ መነገሩን ሰምታችኋል...",
-            },
-        },
-        ቅዳሜ: {
-            "የቅዱስ ጳውሎስ መልዕክት": {
-                title: "ሮሜ 11:25-36",
-                content: "ወንድሞች ሆይ፣ በራሳችሁ ጥበበኞች እንዳትሆኑ ይህን ምሥጢር እንድታውቁ እወዳለሁ...",
-            },
-            መልዕክታት: {
-                title: "1 ጴጥሮስ 4:1-11",
-                content: "ስለዚህ ክርስቶስ በሥጋ ስለተሰቃየ እናንተም በዚሁ አስተሳሰብ ታጠቁ...",
-            },
-            "የሐዋሪያት ስራ": {
-                title: "የሐዋሪያት ስራ 4:13-22",
-                content: "የጴጥሮስና የዮሐንስ ድፍረት ባዩ ጊዜ...",
-            },
-            ወንጌል: {
-                title: "ማቴዎስ 5:43-48",
-                content: "ባልንጀራህን ውደድ ጠላትህንም ጥላ ተብሎ መነገሩን ሰምታችኋል...",
-            },
-        },
-    };
+        // Fetch readings data
+        fetch("/data/minbabat.json")
+            .then((res) => res.json())
+            .then((data) => {
+                setReadings(data);
+                setLoading(false);
+            })
+            .catch((error) => {
+                console.error("Error loading readings data:", error);
+                setLoading(false);
+            });
+    }, []);
 
     const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
     const categories = [
@@ -164,6 +40,19 @@ export default function MinbabatPage() {
         "የሐዋሪያት ስራ",
         "ወንጌል",
     ];
+
+    const currentDate = weekDates[selectedDay];
+
+    if (loading) {
+        return (
+            <div className="min-h-screen pb-20 bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen pb-20 bg-gray-50">
@@ -179,7 +68,7 @@ export default function MinbabatPage() {
                     </p>
                 </div>
 
-                {/* Date Selectors */}
+                {/* Date Selector */}
                 <div className="bg-white rounded-lg shadow p-4 space-y-4">
                     <div className="flex items-center gap-2 mb-3">
                         <Calendar className="w-5 h-5 text-gray-600" />
@@ -195,8 +84,8 @@ export default function MinbabatPage() {
                                     key={day}
                                     onClick={() => setSelectedDay(day)}
                                     className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
-                                        ? "bg-green-600 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                            ? "bg-green-600 text-white"
+                                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                         }`}
                                 >
                                     {day}
@@ -205,52 +94,23 @@ export default function MinbabatPage() {
                         </div>
                     </div>
 
-                    {/* Month */}
-                    <div>
-                        <p className="text-xs text-gray-500 mb-2">ወር</p>
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                            {months.map((month) => (
-                                <option key={month} value={month}>
-                                    {month}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Date */}
-                    <div>
-                        <p className="text-xs text-gray-500 mb-2">ቀን</p>
-                        <select
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                            {dates.map((date) => (
-                                <option key={date} value={date}>
-                                    {date}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="text-center pt-2 border-t">
-                        <p className="text-sm font-medium text-gray-700">
-                            {selectedMonth} {selectedDate} - {selectedDay}
-                        </p>
-                    </div>
+                    {/* Current Ethiopian Date Display */}
+                    {currentDate && (
+                        <div className="text-center pt-2 border-t">
+                            <p className="text-lg font-bold text-gray-900">
+                                {currentDate.month} {currentDate.day}
+                            </p>
+                            <p className="text-xs text-gray-500">{selectedDay}</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Category Readings */}
                 <div className="space-y-3">
                     {categories.map((category) => {
-                        const currentReading =
-                            readings[selectedDay as keyof typeof readings][
-                            category as keyof (typeof readings)["እሁድ"]
-                            ];
+                        const currentReading = readings[selectedDay]?.[category];
+
+                        if (!currentReading) return null;
 
                         return (
                             <div key={category} className="bg-white rounded-lg shadow">

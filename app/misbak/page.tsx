@@ -1,77 +1,63 @@
 "use client";
 
 import { Book, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getCurrentWeekEthiopianDates } from "@/lib/ethiopian-calendar";
+
+interface MisbakData {
+  id: number;
+  date: string;
+  dayOfWeek: string;
+  geez: string;
+  translation: string;
+  liturgy: string;
+}
 
 export default function MisbakPage() {
   const [selectedDay, setSelectedDay] = useState("እሁድ");
-  const [selectedMonth, setSelectedMonth] = useState("ግንቦት");
-  const [selectedDate, setSelectedDate] = useState("2");
+  const [weekDates, setWeekDates] = useState<{ [key: string]: any }>({});
+  const [misbakData, setMisbakData] = useState<MisbakData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const months = [
-    "መስከረም",
-    "ጥቅምት",
-    "ኅዳር",
-    "ታኅሣሥ",
-    "ጥር",
-    "የካቲት",
-    "መጋቢት",
-    "ሚያዝያ",
-    "ግንቦት",
-    "ሰኔ",
-    "ሐምሌ",
-    "ነሐሴ",
-  ];
+  useEffect(() => {
+    // Get Ethiopian dates for current week
+    const dates = getCurrentWeekEthiopianDates();
+    setWeekDates(dates);
 
-  const dates = Array.from({ length: 30 }, (_, i) => (i + 1).toString());
+    // Set today as default
+    const today = new Date();
+    const dayNames = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
+    setSelectedDay(dayNames[today.getDay()]);
+
+    // Fetch misbak data
+    fetch("/data/misbak.json")
+      .then((res) => res.json())
+      .then((data) => {
+        setMisbakData(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error loading misbak data:", error);
+        setLoading(false);
+      });
+  }, []);
+
   const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
+  const currentDate = weekDates[selectedDay];
 
-  const misbakData = [
-    {
-      date: "☦️ የግንቦት 2",
-      geez: `በልዑ ወጸግቡ ጥቀወወሀቦሙ ለፍትወቶሙወኢያኅጥዖሙ እምዘፈቀዱ። መዝ ፸፯ ፡ ፳፱-፴`,
-      translation: `በሉ እጅግም ጠገቡምኞታቸውንም ሰጣቸውከወደዱትም አላሳጣቸውም። መዝ 79፡29-30`,
-      liturgy: "ቅዳሴ፦ ዘዲዮስቆሮስ",
-    },
-    {
-      date: "☦️ የግንቦት 3",
-      geez: `ወአንተ ፡ እግዚኦ ፡ ረሐቅከ ፡ እምኔየ ፡ ኦ ረድኤትየ ፡ ለረድኤትየ ፡ ተለከፍ። መዝ ፳፪ ፡ ፲፱`,
-      translation: `አንተ ግን ጌታዬ ሆይ ከእኔ አትራቅ፤ ረዳቴ ሆይ ለመርዳቴ ቸኩል። መዝ 22፡19`,
-      liturgy: "ቅዳሴ፦ ዘዮሐንስ አፈወርቅ",
-    },
-    {
-      date: "☦️ የግንቦት 4",
-      geez: `ወአንበርኩ ፡ ውስተ ፡ ቤተ ፡ እግዚአብሔር ፡ በኵሉ ፡ መዋዕለ ፡ ሕይወትየ። መዝ ፳፫ ፡ ፮`,
-      translation: `በሕይወቴም ዘመን ሁሉ በእግዚአብሔር ቤት እቀመጣለሁ። መዝ 23፡6`,
-      liturgy: "ቅዳሴ፦ ዘማርቆስ",
-    },
-    {
-      date: "☦️ የግንቦት 5",
-      geez: `እስመ ፡ ውእቱ ፡ አምላክነ ፡ ወንሕነ ፡ ሕዝቡ ፡ ወአባግዕ ፡ መርዓሁ። መዝ ፺፭ ፡ ፯`,
-      translation: `እርሱ አምላካችን ነውና፤ እኛም ሕዝቡ የግጦሹም በጎች ነን። መዝ 95፡7`,
-      liturgy: "ቅዳሴ፦ ዘባስልዮስ",
-    },
-    {
-      date: "☦️ የግንቦት 6",
-      geez: `ወአነ ፡ በብዝኀት ፡ ምሕረትከ ፡ እባእ ፡ ውስተ ፡ ቤትከ። መዝ ፭ ፡ ፰`,
-      translation: `እኔም በምሕረትህ ብዛት ወደ ቤትህ እገባለሁ። መዝ 5፡8`,
-      liturgy: "ቅዳሴ፦ ዘግርጎርዮስ",
-    },
-    {
-      date: "☦️ የግንቦት 7",
-      geez: `ወአነ ፡ በጽድቅ ፡ እሬኢ ፡ ገጸከ ፡ ወእጸግብ ፡ በአስተርአየ ፡ ክብርከ። መዝ ፲፯ ፡ ፲፭`,
-      translation: `እኔም በጽድቅ ፊትህን እመለከታለሁ፤ ክብርህም ሲገለጥ እጠግባለሁ። መዝ 17፡15`,
-      liturgy: "ቅዳሴ፦ ዘቂርሎስ",
-    },
-    {
-      date: "☦️ የግንቦት 8",
-      geez: `ወአነ ፡ በብዝኀት ፡ ምሕረትከ ፡ እባእ ፡ ውስተ ፡ ቤትከ። መዝ ፭ ፡ ፰`,
-      translation: `እኔም በምሕረትህ ብዛት ወደ ቤትህ እገባለሁ። መዝ 5፡8`,
-      liturgy: "ቅዳሴ፦ ዘኤጲፋንዮስ",
-    },
-  ];
+  // Find misbak for selected day
+  const selectedMisbak = misbakData.find((item) => item.dayOfWeek === selectedDay) || misbakData[0];
 
-  const selectedMisbak = misbakData[0]; // Use first one as default
+  if (loading) {
+    return (
+      <div className="min-h-screen pb-20 bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20 bg-gray-50">
@@ -87,7 +73,7 @@ export default function MisbakPage() {
           </p>
         </div>
 
-        {/* Date Selectors */}
+        {/* Date Selector */}
         <div className="bg-white rounded-lg shadow p-4 space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-5 h-5 text-gray-600" />
@@ -113,55 +99,20 @@ export default function MisbakPage() {
             </div>
           </div>
 
-          {/* Month */}
-          <div>
-            <p className="text-xs text-gray-500 mb-2">ወር</p>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {months.map((month) => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Date */}
-          <div>
-            <p className="text-xs text-gray-500 mb-2">ቀን</p>
-            <select
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {dates.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="text-center pt-2 border-t">
-            <p className="text-sm font-medium text-gray-700">
-              {selectedMonth} {selectedDate} - {selectedDay}
-            </p>
-          </div>
+          {/* Current Ethiopian Date Display */}
+          {currentDate && (
+            <div className="text-center pt-2 border-t">
+              <p className="text-lg font-bold text-gray-900">
+                {currentDate.month} {currentDate.day}
+              </p>
+              <p className="text-xs text-gray-500">{selectedDay}</p>
+            </div>
+          )}
         </div>
 
         {/* Misbak Content */}
         {selectedMisbak && (
           <div className="space-y-4">
-            {/* Date Header */}
-            <div className="bg-white rounded-lg shadow p-5">
-              <h2 className="text-2xl font-bold text-blue-700 text-center">
-                {selectedMisbak.date}
-              </h2>
-            </div>
-
             {/* Geez Text */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-semibold text-gray-500 mb-3">ግዕዝ፡-</h3>

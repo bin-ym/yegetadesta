@@ -15,13 +15,15 @@ export default function MinbabatPage() {
         const dates = getCurrentWeekEthiopianDates();
         setWeekDates(dates);
 
-        // Set today as default
+        // Set today as default (Monday-based)
         const today = new Date();
-        const dayNames = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
-        setSelectedDay(dayNames[today.getDay()]);
+        const dayNames = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
+        const gregorianDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const mondayBasedDay = gregorianDay === 0 ? 6 : gregorianDay - 1; // Convert to Monday = 0
+        setSelectedDay(dayNames[mondayBasedDay]);
 
         // Fetch readings data
-        fetch("/data/minbabat.json")
+        fetch("/api/admin/minbabat")
             .then((res) => res.json())
             .then((data) => {
                 setReadings(data);
@@ -33,7 +35,7 @@ export default function MinbabatPage() {
             });
     }, []);
 
-    const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
+    const days = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
     const categories = [
         "የቅዱስ ጳውሎስ መልዕክት",
         "መልዕክታት",
@@ -84,8 +86,8 @@ export default function MinbabatPage() {
                                     key={day}
                                     onClick={() => setSelectedDay(day)}
                                     className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
-                                            ? "bg-green-600 text-white"
-                                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                        ? "bg-green-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                         }`}
                                 >
                                     {day}

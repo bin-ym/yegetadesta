@@ -22,42 +22,48 @@ export async function POST(req: NextRequest) {
 
         const telegramUser = validation.user;
 
-        // Find or create user
+        // Check if user already exists
         let user = await prisma.user.findUnique({
             where: { telegramId: telegramUser.id.toString() },
         });
 
-        if (!user) {
-            // Create new user
-            user = await prisma.user.create({
-                data: {
-                    telegramId: telegramUser.id.toString(),
-                    fullName: `${telegramUser.first_name} ${telegramUser.last_name || ""}`.trim(),
-                    username: telegramUser.username,
-                    role: "MEMBER",
-                    status: "ACTIVE",
-                },
-            });
+        if (user) {
+            return NextResponse.json({ user });
+        }
 
-            // Add to waiting pool for next cycle
-            const currentCycle = await prisma.weeklyCycle.findFirst({
-                where: { phase: { in: ["BUILDING", "PREVIEW"] } },
-                orderBy: { createdAt: "desc" },
-            });
+        // Check if user has a pending request
+        let pendingUser = await prisma.pendingUser.findUnique({
+            where: { telegramId: telegramUser.id.toString() },
+        });
 
-            if (currentCycle) {
-                await prisma.waitingPool.create({
-                    data: {
-                        cycleId: currentCycle.id,
-                        userId: user.id,
-                        position: 0,
-                        status: "WAITING",
-                    },
-                });
+        if (pendingUser) {
+            if (pendingUser.status === "PENDING") {
+                return NextResponse.json({
+                    pending: true,
+                    message: "Your request is pending approval from Super Admin"
+                }, { status: 202 });
+            } else if (pendingUser.status === "REJECTED") {
+                return NextResponse.json({
+                    error: "Your request was rejected"
+                }, { status: 403 });
             }
         }
 
-        return NextResponse.json({ user });
+        // Create new pending user request
+        pendingUser = await prisma.pendingUser.create({
+            data: {
+                telegramId: telegramUser.id.toString(),
+                fullName: `${telegramUser.first_name} ${telegramUser.last_name || ""}`.trim(),
+                username: telegramUser.username,
+                status: "PENDING",
+            },
+        });
+
+        return NextResponse.json({
+            pending: true,
+            message: "Access request submitted. Waiting for Super Admin approval."
+        }, { status: 202 });
+
     } catch (error) {
         console.error("Auth error:", error);
         return NextResponse.json({ error: "Authentication failed" }, { status: 500 });

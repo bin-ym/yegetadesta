@@ -31,48 +31,42 @@ export async function POST(req: NextRequest) {
         });
 
         if (!user) {
-            console.log("User not found, creating new user...");
+            console.log("User not found, checking pending status...");
 
-            // Auto-register new user
-            const newUser = await prisma.user.create({
+            // Check if user has a pending request
+            const pendingUser = await prisma.pendingUser.findUnique({
+                where: { telegramId: validation.user.id.toString() },
+            });
+
+            if (pendingUser) {
+                if (pendingUser.status === "PENDING") {
+                    return NextResponse.json({
+                        pending: true,
+                        message: "Your request is pending approval from Super Admin"
+                    }, { status: 202 });
+                } else if (pendingUser.status === "REJECTED") {
+                    return NextResponse.json({
+                        error: "Your request was rejected"
+                    }, { status: 403 });
+                }
+            }
+
+            // Create new pending user request
+            await prisma.pendingUser.create({
                 data: {
                     telegramId: validation.user.id.toString(),
                     fullName: `${validation.user.first_name} ${validation.user.last_name || ""}`.trim(),
                     username: validation.user.username,
-                    role: "MEMBER",
-                    status: "ACTIVE",
+                    status: "PENDING",
                 },
             });
 
-            console.log("New user created:", newUser.id);
-
-            // Add to waiting pool if there's an active cycle
-            const currentCycle = await prisma.weeklyCycle.findFirst({
-                where: { phase: { in: ["BUILDING", "PREVIEW"] } },
-                orderBy: { createdAt: "desc" },
-            });
-
-            if (currentCycle) {
-                await prisma.waitingPool.create({
-                    data: {
-                        cycleId: currentCycle.id,
-                        userId: newUser.id,
-                        position: 0,
-                        status: "WAITING",
-                    },
-                });
-                console.log("User added to waiting pool");
-            }
+            console.log("Pending user request created");
 
             return NextResponse.json({
-                user: newUser,
-                currentCycle: null,
-                myNode: null,
-                myParent: null,
-                myChildren: [],
-                myOutgoingCalls: [],
-                myIncomingCall: null,
-            });
+                pending: true,
+                message: "Access request submitted. Waiting for Super Admin approval."
+            }, { status: 202 });
         }
 
         console.log("Fetching current cycle...");

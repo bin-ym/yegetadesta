@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
             where: { telegramId: validation.user.id.toString() },
         });
 
-        if (!user || user.role !== "ADMIN") {
+        if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
             return NextResponse.json({ error: "Admin access required" }, { status: 403 });
         }
 
@@ -50,8 +50,9 @@ export async function PATCH(req: NextRequest) {
             where: { telegramId: validation.user.id.toString() },
         });
 
-        if (!user || user.role !== "ADMIN") {
-            return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+        // Only SUPER_ADMIN can update roles
+        if (!user || user.role !== "SUPER_ADMIN") {
+            return NextResponse.json({ error: "Super Admin access required" }, { status: 403 });
         }
 
         const updatedUser = await prisma.user.update({

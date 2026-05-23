@@ -37,6 +37,26 @@ model User {
   @@index([status])
 }
 
+model PendingUser {
+  id             String   @id @default(cuid())
+
+  telegramId     String   @unique
+  fullName       String
+  username       String?
+
+  status         PendingStatus @default(PENDING)
+
+  requestedAt    DateTime @default(now())
+  reviewedAt     DateTime?
+  reviewedBy     String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([telegramId])
+  @@index([status])
+}
+
 model WeeklyCycle {
   id                String @id @default(cuid())
 
@@ -180,6 +200,7 @@ model WeeklySnapshot {
 }
 
 enum Role {
+  SUPER_ADMIN
   ADMIN
   MEMBER
 }
@@ -188,6 +209,12 @@ enum MemberStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+}
+
+enum PendingStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum CyclePhase {

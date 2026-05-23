@@ -24,13 +24,15 @@ export default function MisbakPage() {
     const dates = getCurrentWeekEthiopianDates();
     setWeekDates(dates);
 
-    // Set today as default
+    // Set today as default (Monday-based)
     const today = new Date();
-    const dayNames = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
-    setSelectedDay(dayNames[today.getDay()]);
+    const dayNames = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
+    const gregorianDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const mondayBasedDay = gregorianDay === 0 ? 6 : gregorianDay - 1; // Convert to Monday = 0
+    setSelectedDay(dayNames[mondayBasedDay]);
 
     // Fetch misbak data
-    fetch("/data/misbak.json")
+    fetch("/api/admin/misbak")
       .then((res) => res.json())
       .then((data) => {
         setMisbakData(data);
@@ -42,11 +44,25 @@ export default function MisbakPage() {
       });
   }, []);
 
-  const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
+  const days = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
   const currentDate = weekDates[selectedDay];
 
-  // Find misbak for selected day
-  const selectedMisbak = misbakData.find((item) => item.dayOfWeek === selectedDay) || misbakData[0];
+  // Find misbak for selected day by matching the Ethiopian date
+  let selectedMisbak = null;
+  if (currentDate) {
+    const currentEthiopianDate = `${currentDate.month} ${currentDate.day} ${currentDate.year}`;
+    selectedMisbak = misbakData.find((item) => item.date === currentEthiopianDate);
+  }
+
+  // Fallback: if no exact date match, try to find by day of week
+  if (!selectedMisbak) {
+    selectedMisbak = misbakData.find((item) => item.dayOfWeek === selectedDay);
+  }
+
+  // Final fallback: use first item
+  if (!selectedMisbak && misbakData.length > 0) {
+    selectedMisbak = misbakData[0];
+  }
 
   if (loading) {
     return (
@@ -89,8 +105,8 @@ export default function MisbakPage() {
                   key={day}
                   onClick={() => setSelectedDay(day)}
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
                   {day}
@@ -111,8 +127,22 @@ export default function MisbakPage() {
         </div>
 
         {/* Misbak Content */}
-        {selectedMisbak && (
+        {selectedMisbak ? (
           <div className="space-y-4">
+            {/* Date Info */}
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">የተመረጠው ቀን</p>
+                  <p className="text-lg font-bold text-blue-700">{selectedMisbak.date}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">የሳምንት ቀን</p>
+                  <p className="text-lg font-bold text-gray-900">{selectedMisbak.dayOfWeek}</p>
+                </div>
+              </div>
+            </div>
+
             {/* Geez Text */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-semibold text-gray-500 mb-3">ግዕዝ፡-</h3>
@@ -141,6 +171,21 @@ export default function MisbakPage() {
                 </p>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <Book className="w-16 h-16 mx-auto mb-3" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              ምስባክ አልተገኘም
+            </h3>
+            <p className="text-gray-600 mb-4">
+              ለዚህ ቀን ({currentDate?.month} {currentDate?.day}) ምስባክ አልተመዘገበም።
+            </p>
+            <p className="text-sm text-gray-500">
+              እባክዎ ሌላ ቀን ይምረጡ ወይም አስተዳዳሪውን ያነጋግሩ።
+            </p>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 // lib/ethiopian-calendar.ts
-// Ethiopian Calendar Utilities - More accurate conversion
+// Ethiopian Calendar Utilities - Accurate conversion
 
 export interface EthiopianDate {
     year: number;
@@ -10,23 +10,23 @@ export interface EthiopianDate {
 
 const ethiopianMonths = [
     "መስከረም", // 1
-    "ጥቅምት",   // 2
-    "ኅዳር",     // 3
-    "ታኅሣሥ",   // 4
-    "ጥር",      // 5
-    "የካቲት",   // 6
-    "መጋቢት",   // 7
-    "ሚያዝያ",   // 8
-    "ግንቦት",   // 9
-    "ሰኔ",      // 10
-    "ሐምሌ",    // 11
-    "ነሐሴ",    // 12
-    "ጳጉሜ",    // 13
+    "ጥቅምት", // 2
+    "ኅዳር", // 3
+    "ታኅሣሥ", // 4
+    "ጥር", // 5
+    "የካቲት", // 6
+    "መጋቢት", // 7
+    "ሚያዝያ", // 8
+    "ግንቦት", // 9
+    "ሰኔ", // 10
+    "ሐምሌ", // 11
+    "ነሐሴ", // 12
+    "ጳጉሜ", // 13
 ];
 
 const ethiopianDays = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
 
-// More accurate Gregorian to Ethiopian conversion
+// Accurate Gregorian to Ethiopian conversion
 export function gregorianToEthiopian(date: Date): EthiopianDate {
     const year = date.getFullYear();
     const month = date.getMonth() + 1; // 1-12
@@ -47,33 +47,36 @@ export function gregorianToEthiopian(date: Date): EthiopianDate {
         ethYear = year - 7;
     }
 
-    // Calculate Ethiopian month and day
-    // Ethiopian months are 30 days each (except Pagume which is 5-6 days)
-    const daysInGregorianYear = Math.floor(
-        (Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000
-    );
+    // Calculate day of year
+    const startOfYear = new Date(year, 0, 1);
+    const diff = date.getTime() - startOfYear.getTime();
+    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
 
     // Ethiopian New Year starts on day 254 of Gregorian year (Sept 11)
-    const ethiopianNewYearDay = 254;
+    // or day 255 in leap years
+    const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    const ethiopianNewYearDay = isLeap ? 255 : 254;
 
     let daysSinceEthiopianNewYear: number;
-    if (daysInGregorianYear >= ethiopianNewYearDay) {
-        daysSinceEthiopianNewYear = daysInGregorianYear - ethiopianNewYearDay;
+    if (dayOfYear >= ethiopianNewYearDay) {
+        // After Ethiopian New Year
+        daysSinceEthiopianNewYear = dayOfYear - ethiopianNewYearDay + 1;
     } else {
-        // Before Ethiopian New Year, count from previous year
-        const prevYearDays = isLeapYear(year - 1) ? 366 : 365;
-        daysSinceEthiopianNewYear =
-            prevYearDays - ethiopianNewYearDay + daysInGregorianYear;
+        // Before Ethiopian New Year - count from previous year
+        const prevYear = year - 1;
+        const prevYearDays = ((prevYear % 4 === 0 && prevYear % 100 !== 0) || prevYear % 400 === 0) ? 366 : 365;
+        const prevEthNewYear = ((prevYear % 4 === 0 && prevYear % 100 !== 0) || prevYear % 400 === 0) ? 255 : 254;
+        daysSinceEthiopianNewYear = prevYearDays - prevEthNewYear + dayOfYear + 1;
     }
 
-    // Calculate month and day
-    ethMonth = Math.floor(daysSinceEthiopianNewYear / 30);
-    ethDay = (daysSinceEthiopianNewYear % 30) + 1;
+    // Calculate month and day (each Ethiopian month has 30 days, except Pagume)
+    ethMonth = Math.floor((daysSinceEthiopianNewYear - 1) / 30);
+    ethDay = ((daysSinceEthiopianNewYear - 1) % 30) + 1;
 
-    // Adjust for 0-based month index
+    // Ensure month is within bounds
     if (ethMonth > 12) {
         ethMonth = 12;
-        ethDay = daysSinceEthiopianNewYear - 360 + 1;
+        ethDay = daysSinceEthiopianNewYear - 360;
     }
 
     const dayOfWeek = ethiopianDays[date.getDay()];
@@ -86,25 +89,26 @@ export function gregorianToEthiopian(date: Date): EthiopianDate {
     };
 }
 
-function isLeapYear(year: number): boolean {
-    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-}
-
-// Get Ethiopian date for a specific day of the week in current week
+// Get Ethiopian date for a specific day of the week starting from Monday
 export function getEthiopianDateForDayOfWeek(dayName: string): EthiopianDate {
     const today = new Date();
-    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
-    // Map Ethiopian day names to numbers
+    // Map Ethiopian day names to numbers (Monday = 0, Sunday = 6)
     const dayMap: { [key: string]: number } = {
-        እሁድ: 0,
-        ሰኞ: 1,
-        ማክሰኞ: 2,
-        ረቡዕ: 3,
-        ሐሙስ: 4,
-        አርብ: 5,
-        ቅዳሜ: 6,
+        ሰኞ: 0,      // Monday
+        ማክሰኞ: 1,    // Tuesday
+        ረቡዕ: 2,     // Wednesday
+        ሐሙስ: 3,     // Thursday
+        አርብ: 4,     // Friday
+        ቅዳሜ: 5,     // Saturday
+        እሁድ: 6,     // Sunday
     };
+
+    // Get current day (0 = Sunday, 1 = Monday, etc.)
+    const currentGregorianDay = today.getDay();
+
+    // Convert to Monday-based (0 = Monday, 6 = Sunday)
+    const currentDay = currentGregorianDay === 0 ? 6 : currentGregorianDay - 1;
 
     const targetDay = dayMap[dayName];
     const daysToAdd = targetDay - currentDay;
@@ -120,9 +124,9 @@ export function getCurrentEthiopianDate(): EthiopianDate {
     return gregorianToEthiopian(new Date());
 }
 
-// Get all days of current week with Ethiopian dates
+// Get all days of current week with Ethiopian dates (Monday to Sunday)
 export function getCurrentWeekEthiopianDates(): { [key: string]: EthiopianDate } {
-    const days = ["እሁድ", "ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ"];
+    const days = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
     const weekDates: { [key: string]: EthiopianDate } = {};
 
     days.forEach((day) => {

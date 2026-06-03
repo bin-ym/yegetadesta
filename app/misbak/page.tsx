@@ -7,7 +7,6 @@ import { getCurrentWeekEthiopianDates } from "@/lib/ethiopian-calendar";
 interface MisbakData {
   id: number;
   date: string;
-  dayOfWeek: string;
   geez: string;
   translation: string;
   liturgy: string;
@@ -50,13 +49,10 @@ export default function MisbakPage() {
   // Find misbak for selected day by matching the Ethiopian date
   let selectedMisbak = null;
   if (currentDate) {
-    const currentEthiopianDate = `${currentDate.month} ${currentDate.day} ${currentDate.year}`;
-    selectedMisbak = misbakData.find((item) => item.date === currentEthiopianDate);
-  }
-
-  // Fallback: if no exact date match, try to find by day of week
-  if (!selectedMisbak) {
-    selectedMisbak = misbakData.find((item) => item.dayOfWeek === selectedDay);
+    const currentEthiopianDate = `${currentDate.month} ${currentDate.day}`;
+    selectedMisbak = misbakData.find(
+      (item) => item.date === currentEthiopianDate,
+    );
   }
 
   // Final fallback: use first item
@@ -104,10 +100,11 @@ export default function MisbakPage() {
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedDay === day
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    selectedDay === day
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
                 >
                   {day}
                 </button>
@@ -129,23 +126,11 @@ export default function MisbakPage() {
         {/* Misbak Content */}
         {selectedMisbak ? (
           <div className="space-y-4">
-            {/* Date Info */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">የተመረጠው ቀን</p>
-                  <p className="text-lg font-bold text-blue-700">{selectedMisbak.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">የሳምንት ቀን</p>
-                  <p className="text-lg font-bold text-gray-900">{selectedMisbak.dayOfWeek}</p>
-                </div>
-              </div>
-            </div>
-
             {/* Geez Text */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">ግዕዝ፡-</h3>
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">
+                ግዕዝ፡-
+              </h3>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-gray-800 leading-relaxed whitespace-pre-wrap text-lg">
                   {selectedMisbak.geez}
@@ -155,7 +140,9 @@ export default function MisbakPage() {
 
             {/* Translation */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">ትርጉም፡-</h3>
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">
+                ትርጉም፡-
+              </h3>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                   {selectedMisbak.translation}
@@ -192,8 +179,8 @@ export default function MisbakPage() {
         {/* Info Card */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>ማስታወሻ:</strong> ምስባክ በየቀኑ እና በየበዓሉ ይለያያል። ከመምህራን ጋር
-            በመማከር ትክክለኛውን ምስባክ ይጠቀሙ።
+            <strong>ማስታወሻ:</strong> ምስባክ በየቀኑ እና በየበዓሉ ይለያያል። ከመምህራን ጋር በመማከር
+            ትክክለኛውን ምስባክ ይጠቀሙ።
           </p>
         </div>
       </div>

@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Phone, MapPin, CheckCircle } from "lucide-react";
+import { User, Phone, MapPin, CheckCircle, Type } from "lucide-react";
 
 interface Props {
   initData: string;
@@ -15,6 +15,7 @@ export default function ProfileCompletionModal({
   onCompleteAction,
 }: Props) {
   const [formData, setFormData] = useState({
+    fullName: "",
     baptismName: "",
     phoneNumber: "",
     address: "",
@@ -57,13 +58,32 @@ export default function ProfileCompletionModal({
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
             <User className="w-8 h-8 text-blue-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">ፕሮፋይልዎን ያሟሉ</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-black">
+            ፕሮፋይልዎን ያሟሉ
+          </h2>
           <p className="text-gray-600 text-sm">
             ለመጀመር እባክዎ የሚከተሉትን መረጃዎች በትክክል ይሙሉ
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
+              <Type className="w-4 h-4 text-purple-500" />
+              ሙሉ ስም
+            </label>
+            <input
+              type="text"
+              value={formData.fullName}
+              onChange={(e) =>
+                setFormData({ ...formData, fullName: e.target.value })
+              }
+              className="w-full px-4 py-3 border border-gray-300 text-black rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              placeholder="ለምሳሌ፡ አበበ በቀለ"
+              required
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-blue-500" />
@@ -75,7 +95,7 @@ export default function ProfileCompletionModal({
               onChange={(e) =>
                 setFormData({ ...formData, baptismName: e.target.value })
               }
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-3 border border-gray-300 text-black rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="ለምሳሌ፡ ኃይለ ማርያም"
               required
             />
@@ -92,7 +112,7 @@ export default function ProfileCompletionModal({
               onChange={(e) =>
                 setFormData({ ...formData, phoneNumber: e.target.value })
               }
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-3 border border-gray-300 text-black rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="09..."
               required
             />
@@ -109,7 +129,7 @@ export default function ProfileCompletionModal({
               onChange={(e) =>
                 setFormData({ ...formData, address: e.target.value })
               }
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-3 border border-gray-300 text-black rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="ለምሳሌ፡ አዲስ አበባ"
               required
             />

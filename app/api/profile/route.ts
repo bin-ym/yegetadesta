@@ -7,7 +7,7 @@ import { validateTelegramWebAppData } from "@/lib/telegram-auth";
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { initData, baptismName, phoneNumber, address } = body;
+    const { initData, fullName, baptismName, phoneNumber, address } = body;
 
     if (!initData) {
       return NextResponse.json({ error: "Missing auth data" }, { status: 401 });
@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest) {
     const updatedUser = await prisma.user.update({
       where: { telegramId: validation.user.id.toString() },
       data: {
+        fullName,
         baptismName,
         phoneNumber,
         address,

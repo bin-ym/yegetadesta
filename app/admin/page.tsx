@@ -152,7 +152,7 @@ export default function AdminPage() {
                 onChange={(e) =>
                   setLoginRole(e.target.value as "SUPER_ADMIN" | "ADMIN")
                 }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-3 border border-black-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-black"
               >
                 <option value="ADMIN">Admin</option>
                 <option value="SUPER_ADMIN">Super Admin</option>
@@ -168,7 +168,7 @@ export default function AdminPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-black"
                 required
               />
             </div>

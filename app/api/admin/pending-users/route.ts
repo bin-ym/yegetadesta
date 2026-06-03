@@ -5,6 +5,29 @@ import { prisma } from "@/lib/prisma";
 import { validateTelegramWebAppData } from "@/lib/telegram-auth";
 import { integrateUserIntoTree } from "@/lib/tree-engine";
 
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+async function sendTelegramMessage(chatId: string, text: string) {
+  if (!BOT_TOKEN) {
+    console.warn("TELEGRAM_BOT_TOKEN missing. Message not sent:", text);
+    return;
+  }
+  try {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to send Telegram message:", err);
+  }
+}
+
 // Get all pending users
 export async function GET(req: NextRequest) {
   try {
@@ -136,9 +159,15 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // SEND BOT NOTIFICATION
+      await sendTelegramMessage(
+        pendingUser.telegramId,
+        `<b>እንኳን ደስ አለዎት!</b> 🎉\n\nየቅዳሴ ጥሪ አገልግሎት ጥያቄዎ ተቀባይነት አግኝቷል። አሁን ወደ አፕሊኬሽኑ በመግባት አገልግሎቱን መጠቀም ይችላሉ።\n\n✝ እግዚአብሔር አገልግሎታችንን ይቀበልልን።`,
+      );
+
       return NextResponse.json({
         success: true,
-        message: "User approved and added to next pool & tree",
+        message: "User approved and notified",
         user: newUser,
       });
     } else if (action === "reject") {
@@ -152,9 +181,15 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // SEND BOT NOTIFICATION
+      await sendTelegramMessage(
+        pendingUser.telegramId,
+        `የቅዳሴ ጥሪ አገልግሎት ጥያቄዎ በSUPER ADMIN ውድቅ ተደርጓል። ለበለጠ መረጃ እባክዎ አስተዳዳሪዎችን ያነጋግሩ።`,
+      );
+
       return NextResponse.json({
         success: true,
-        message: "User request rejected",
+        message: "User request rejected and notified",
       });
     } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });

@@ -1,22 +1,8 @@
 // lib/tree-engine.ts
 // ────────────────────────────────────────────────────────────────
-// Kidase Call Tree Engine
-//
-// Builds and persists a balanced binary call tree.
-//
-// Example:
-//
-//                A
-//           /         \
-//          B           C
-//        /   \       /   \
-//       D     E     F     G
-//
-// Every parent calls its direct children.
-// ────────────────────────────────────────────────────────────────
 
-import { prisma } from "./prisma"
-import { CallStatus } from "@prisma/client"
+import { prisma } from "./prisma";
+import { CallStatus } from "@prisma/client";
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -27,275 +13,188 @@ export type CyclePhaseType =
   | "PREVIEW"
   | "ACTIVE"
   | "CLOSED"
-  | "HISTORY"
+  | "HISTORY";
 
 interface BuildInput {
-  cycleId: string
-  userIds: string[]
+  cycleId: string;
+  userIds: string[];
 }
 
 interface BuiltNode {
-  userId: string
-  position: string
-  label: string
-  level: number
-  parentPosition: string | null
+  userId: string;
+  position: string;
+  label: string;
+  level: number;
+  parentPosition: string | null;
 }
 
 // ────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────
 
-function positionLabel(index: number): string {
+export function positionLabel(index: number): string {
   if (index < 26) {
-    return String.fromCharCode(65 + index)
+    return String.fromCharCode(65 + index);
   }
 
-  const first = String.fromCharCode(
-    65 + Math.floor(index / 26) - 1
-  )
+  const first = String.fromCharCode(65 + Math.floor(index / 26) - 1);
 
-  const second = String.fromCharCode(
-    65 + (index % 26)
-  )
+  const second = String.fromCharCode(65 + (index % 26));
 
-  return first + second
+  return first + second;
+}
+
+export function calculateNodeInfo(i: number) {
+  let level: number;
+  let parentIndex: number;
+
+  if (i === 0) {
+    level = 0;
+    parentIndex = -1;
+  } else if (i === 1 || i === 2) {
+    level = 1;
+    parentIndex = 0;
+  } else if (i >= 3 && i <= 6) {
+    level = 2;
+    parentIndex = i === 3 || i === 4 ? 1 : 2;
+  } else {
+    level = 2 + Math.floor((i - 3) / 4);
+    parentIndex = i - 4;
+  }
+
+  return { level, parentIndex, position: positionLabel(i) };
 }
 
 // ────────────────────────────────────────────────────────────────
-// Build in-memory tree structure
+// Build tree in memory
 // ────────────────────────────────────────────────────────────────
 
-export function buildTreeNodes(
-  userIds: string[]
-): BuiltNode[] {
-  if (userIds.length === 0) {
-    return []
-  }
+export function buildTreeNodes(userIds: string[]): BuiltNode[] {
+  if (userIds.length === 0) return [];
 
-  const nodes: BuiltNode[] = []
+  const nodes: BuiltNode[] = [];
 
   for (let i = 0; i < userIds.length; i++) {
-    const level = Math.floor(Math.log2(i + 1))
-
-    const parentIndex =
-      i > 0
-        ? Math.floor((i - 1) / 2)
-        : -1
+    const { level, parentIndex, position } = calculateNodeInfo(i);
 
     nodes.push({
       userId: userIds[i],
-
       position: positionLabel(i),
-
       label: positionLabel(i),
-
       level,
-
-      parentPosition:
-        parentIndex >= 0
-          ? positionLabel(parentIndex)
-          : null,
-    })
+      parentPosition: parentIndex >= 0 ? positionLabel(parentIndex) : null,
+    });
   }
 
-  return nodes
+  return nodes;
 }
 
 // ────────────────────────────────────────────────────────────────
-// Persist tree into database
+// Persist tree (FIXED - no transaction timeout issues)
 // ────────────────────────────────────────────────────────────────
 
-export async function persistTree(
-  input: BuildInput
-): Promise<void> {
-  const { cycleId, userIds } = input
+export async function persistTree(input: BuildInput): Promise<void> {
+  const { cycleId, userIds } = input;
 
-  const builtNodes = buildTreeNodes(userIds)
+  const builtNodes = buildTreeNodes(userIds);
 
-  await prisma.$transaction(async (tx) => {
-    // Remove old call edges
-    await tx.callEdge.deleteMany({
-      where: {
-        cycleId,
-      },
-    })
+  await prisma.$transaction(
+    async (tx) => {
+      // 1. Clean old data
+      await tx.callEdge.deleteMany({ where: { cycleId } });
+      await tx.treeNode.deleteMany({ where: { cycleId } });
 
-    // Remove old tree nodes
-    await tx.treeNode.deleteMany({
-      where: {
-        cycleId,
-      },
-    })
-
-    // Create nodes
-    await tx.treeNode.createMany({
-      data: builtNodes.map((node) => ({
-        cycleId,
-
-        userId: node.userId,
-
-        position: node.position,
-
-        level: node.level,
-      })),
-    })
-
-    // Fetch all nodes once
-    const createdNodes =
-      await tx.treeNode.findMany({
-        where: {
+      // 2. Insert all nodes
+      await tx.treeNode.createMany({
+        data: builtNodes.map((node) => ({
           cycleId,
-        },
-      })
+          userId: node.userId,
+          position: node.position,
+          level: node.level,
+        })),
+      });
 
-    // Fast lookup map
-    const nodeMap = new Map(
-      createdNodes.map((node) => [
-        node.position,
-        node,
-      ])
-    )
+      // 3. Fetch inserted nodes once
+      const createdNodes = await tx.treeNode.findMany({
+        where: { cycleId },
+      });
 
-    // Attach parent references
-    for (const node of builtNodes) {
-      if (!node.parentPosition) {
-        continue
+      const nodeMap = new Map(createdNodes.map((n) => [n.position, n]));
+
+      // 4. Prepare batch operations (NO AWAIT INSIDE LOOP)
+      const updateOps: any[] = [];
+      const edgeOps: any[] = [];
+
+      for (const node of builtNodes) {
+        if (!node.parentPosition) continue;
+
+        const parent = nodeMap.get(node.parentPosition);
+        const current = nodeMap.get(node.position);
+
+        if (!parent || !current) continue;
+
+        updateOps.push(
+          tx.treeNode.update({
+            where: { id: current.id },
+            data: { parentNodeId: parent.id },
+          }),
+        );
+
+        edgeOps.push(
+          tx.callEdge.create({
+            data: {
+              cycleId,
+              callerNodeId: parent.id,
+              calleeNodeId: current.id,
+              status: CallStatus.UNCALLED,
+            },
+          }),
+        );
       }
 
-      const parent = nodeMap.get(
-        node.parentPosition
-      )
-
-      const current = nodeMap.get(
-        node.position
-      )
-
-      if (!parent || !current) {
-        continue
-      }
-
-      await tx.treeNode.update({
-        where: {
-          id: current.id,
-        },
-
-        data: {
-          parentNodeId: parent.id,
-        },
-      })
-    }
-
-    // Create call edges
-    for (const node of builtNodes) {
-      if (!node.parentPosition) {
-        continue
-      }
-
-      const caller = nodeMap.get(
-        node.parentPosition
-      )
-
-      const callee = nodeMap.get(
-        node.position
-      )
-
-      if (!caller || !callee) {
-        continue
-      }
-
-      await tx.callEdge.create({
-        data: {
-          cycleId,
-
-          callerNodeId: caller.id,
-
-          calleeNodeId: callee.id,
-
-          status: CallStatus.UNCALLED,
-        },
-      })
-    }
-  })
-}
-
-// ────────────────────────────────────────────────────────────────
-// Fetch complete tree
-// ────────────────────────────────────────────────────────────────
-
-export async function getTreeForCycle(
-  cycleId: string
-) {
-  return prisma.treeNode.findMany({
-    where: {
-      cycleId,
+      // 5. Execute in parallel (still inside transaction)
+      await Promise.all([...updateOps, ...edgeOps]);
     },
+    { timeout: 30000 },
+  );
+}
 
+// ────────────────────────────────────────────────────────────────
+// Fetch full tree
+// ────────────────────────────────────────────────────────────────
+
+export async function getTreeForCycle(cycleId: string) {
+  return prisma.treeNode.findMany({
+    where: { cycleId },
     include: {
       user: true,
-
-      parent: {
-        include: {
-          user: true,
-        },
-      },
-
-      children: {
-        include: {
-          user: true,
-        },
-      },
-
+      parent: { include: { user: true } },
+      children: { include: { user: true } },
       outgoingCalls: {
         include: {
-          calleeNode: {
-            include: {
-              user: true,
-            },
-          },
+          calleeNode: { include: { user: true } },
         },
       },
-
       incomingCalls: {
         include: {
-          callerNode: {
-            include: {
-              user: true,
-            },
-          },
+          callerNode: { include: { user: true } },
         },
       },
     },
-
-    orderBy: [
-      {
-        level: "asc",
-      },
-
-      {
-        position: "asc",
-      },
-    ],
-  })
+    orderBy: [{ level: "asc" }, { position: "asc" }],
+  });
 }
 
 // ────────────────────────────────────────────────────────────────
-// Get user tree position
+// User position
 // ────────────────────────────────────────────────────────────────
 
-export async function getUserPosition(
-  telegramId: string,
-  cycleId: string
-) {
+export async function getUserPosition(telegramId: string, cycleId: string) {
   const user = await prisma.user.findUnique({
-    where: {
-      telegramId,
-    },
-  })
+    where: { telegramId },
+  });
 
-  if (!user) {
-    return null
-  }
+  if (!user) return null;
 
   return prisma.treeNode.findUnique({
     where: {
@@ -304,93 +203,45 @@ export async function getUserPosition(
         userId: user.id,
       },
     },
-
     include: {
       user: true,
-
-      parent: {
-        include: {
-          user: true,
-        },
-      },
-
-      children: {
-        include: {
-          user: true,
-        },
-      },
-
+      parent: { include: { user: true } },
+      children: { include: { user: true } },
       outgoingCalls: {
         include: {
-          calleeNode: {
-            include: {
-              user: true,
-            },
-          },
+          calleeNode: { include: { user: true } },
         },
       },
-
       incomingCalls: {
         include: {
-          callerNode: {
-            include: {
-              user: true,
-            },
-          },
+          callerNode: { include: { user: true } },
         },
       },
     },
-  })
+  });
 }
 
 // ────────────────────────────────────────────────────────────────
-// Current active cycle
+// Cycle helpers (unchanged)
 // ────────────────────────────────────────────────────────────────
 
 export async function getCurrentCycle() {
   return prisma.weeklyCycle.findFirst({
-    where: {
-      isLocked: false,
-    },
-
-    orderBy: {
-      createdAt: "desc",
-    },
-  })
+    where: { isLocked: false },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
-// ────────────────────────────────────────────────────────────────
-// Compute cycle phase
-// ────────────────────────────────────────────────────────────────
+export function computeCurrentPhase(now: Date): CyclePhaseType {
+  const day = now.getUTCDay();
+  const hour = now.getUTCHours();
 
-export function computeCurrentPhase(
-  now: Date
-): CyclePhaseType {
-  const day = now.getUTCDay()
+  if (day === 3) return "BUILDING";
+  if (day === 5) return "PREVIEW";
+  if (day === 6 && hour >= 4) return "ACTIVE";
+  if (day === 0) return "CLOSED";
 
-  const hour = now.getUTCHours()
-
-  // Wednesday
-  if (day === 3) {
-    return "BUILDING"
-  }
-
-  // Friday
-  if (day === 5) {
-    return "PREVIEW"
-  }
-
-  // Saturday after 4AM UTC
-  if (day === 6 && hour >= 4) {
-    return "ACTIVE"
-  }
-
-  // Sunday
-  if (day === 0) {
-    return "CLOSED"
-  }
-
-  return "HISTORY"
+  return "HISTORY";
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -398,61 +249,35 @@ export function computeCurrentPhase(
 // ────────────────────────────────────────────────────────────────
 
 export async function createWeeklyCycle() {
-  const now = new Date()
+  const now = new Date();
+  const year = now.getUTCFullYear();
 
-  const year = now.getUTCFullYear()
-
-  const startOfYear = new Date(
-    Date.UTC(year, 0, 1)
-  )
+  const startOfYear = new Date(Date.UTC(year, 0, 1));
 
   const weekNumber = Math.ceil(
-    (
-      (
-        now.getTime() -
-        startOfYear.getTime()
-      ) /
-      86400000 +
+    ((now.getTime() - startOfYear.getTime()) / 86400000 +
       startOfYear.getUTCDay() +
-      1
-    ) / 7
-  )
+      1) /
+      7,
+  );
 
-  // Upcoming Saturday
-  const saturday = new Date(now)
+  const saturday = new Date(now);
+  const daysUntilSaturday = (6 - now.getUTCDay() + 7) % 7;
 
-  const daysUntilSaturday =
-    (6 - now.getUTCDay() + 7) % 7
+  saturday.setUTCDate(now.getUTCDate() + daysUntilSaturday);
+  saturday.setUTCHours(4, 0, 0, 0);
 
-  saturday.setUTCDate(
-    now.getUTCDate() + daysUntilSaturday
-  )
+  const sunday = new Date(saturday);
+  sunday.setUTCDate(saturday.getUTCDate() + 1);
+  sunday.setUTCHours(23, 59, 59, 999);
 
-  saturday.setUTCHours(4, 0, 0, 0)
-
-  // Sunday end
-  const sunday = new Date(saturday)
-
-  sunday.setUTCDate(
-    saturday.getUTCDate() + 1
-  )
-
-  sunday.setUTCHours(23, 59, 59, 999)
-
-  const cycle =
-    await prisma.weeklyCycle.create({
-      data: {
-        weekNumber,
-
-        year,
-
-        phase: "BUILDING",
-
-        startDate: saturday,
-
-        endDate: sunday,
-      },
-    })
-
-  return cycle
+  return prisma.weeklyCycle.create({
+    data: {
+      weekNumber,
+      year,
+      phase: "BUILDING",
+      startDate: saturday,
+      endDate: sunday,
+    },
+  });
 }

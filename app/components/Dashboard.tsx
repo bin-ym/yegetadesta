@@ -1,8 +1,19 @@
+// app/components/Dashboard.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { DashboardData, CallStatus } from "../types";
-import { Phone, CheckCircle, XCircle, Clock, PhoneCall, History, User } from "lucide-react";
+import {
+  Phone,
+  CheckCircle,
+  XCircle,
+  Clock,
+  PhoneCall,
+  History,
+  User,
+} from "lucide-react";
+import ProfileCompletionModal from "./ProfileCompletionModal";
 
 interface DashboardProps {
   data: DashboardData;
@@ -13,9 +24,17 @@ export default function Dashboard({ data, initData }: DashboardProps) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [pastCycles, setPastCycles] = useState<any[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const { user, currentCycle, myNode, myParent, myChildren, myOutgoingCalls, myIncomingCall } =
-    data;
+  const {
+    user,
+    currentCycle,
+    myNode,
+    myParent,
+    myChildren,
+    myOutgoingCalls,
+    myIncomingCall,
+  } = data;
 
   useEffect(() => {
     // Fetch past cycles
@@ -35,7 +54,12 @@ export default function Dashboard({ data, initData }: DashboardProps) {
       }
     }
     fetchHistory();
-  }, [initData]);
+
+    // Check if profile is incomplete
+    if (!user.baptismName || !user.phoneNumber || !user.address) {
+      setShowProfileModal(true);
+    }
+  }, [initData, user]);
 
   const updateCallStatus = async (callEdgeId: string, status: CallStatus) => {
     setUpdating(callEdgeId);
@@ -71,7 +95,9 @@ export default function Dashboard({ data, initData }: DashboardProps) {
               <Phone className="w-10 h-10 text-blue-600" />
             </div>
             <h2 className="text-2xl font-bold mb-2">✝ ቅዳሴ ጥሪ</h2>
-            <p className="text-gray-600">No active cycle yet. Check back soon!</p>
+            <p className="text-gray-600">
+              No active cycle yet. Check back soon!
+            </p>
           </div>
         </div>
       </div>
@@ -90,8 +116,8 @@ export default function Dashboard({ data, initData }: DashboardProps) {
             </p>
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
               <p className="text-sm text-blue-800">
-                You'll be assigned a position in the call tree for the next weekly
-                cycle.
+                You'll be assigned a position in the call tree for the next
+                weekly cycle.
               </p>
             </div>
           </div>
@@ -171,7 +197,9 @@ export default function Dashboard({ data, initData }: DashboardProps) {
               <History className="w-6 h-6" />
             </button>
           </div>
-          <div className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getPhaseColor(currentCycle.phase)}`}>
+          <div
+            className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getPhaseColor(currentCycle.phase)}`}
+          >
             {currentCycle.phase}
           </div>
         </div>
@@ -234,7 +262,9 @@ export default function Dashboard({ data, initData }: DashboardProps) {
               {myNode.position}
             </div>
             <div>
-              <p className="font-semibold text-lg text-gray-900">{user.fullName}</p>
+              <p className="font-semibold text-lg text-gray-900">
+                {user.fullName}
+              </p>
               <p className="text-sm text-gray-500">Level {myNode.level}</p>
               {user.baptismName && (
                 <p className="text-xs text-blue-600">✝ {user.baptismName}</p>
@@ -268,7 +298,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                       onClick={() =>
                         makePhoneCall(
                           myParent.user.phoneNumber!,
-                          myParent.user.fullName
+                          myParent.user.fullName,
                         )
                       }
                       className="flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 mt-1"
@@ -319,7 +349,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                           onClick={() =>
                             makePhoneCall(
                               call.calleeNode.user.phoneNumber!,
-                              call.calleeNode.user.fullName
+                              call.calleeNode.user.fullName,
                             )
                           }
                           className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1"
@@ -334,33 +364,34 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                     </div>
                   </div>
 
-                  {currentCycle.phase === "ACTIVE" && call.status !== "ANSWERED" && (
-                    <div className="flex gap-2">
-                      {call.status === "UNCALLED" && (
+                  {currentCycle.phase === "ACTIVE" &&
+                    call.status !== "ANSWERED" && (
+                      <div className="flex gap-2">
+                        {call.status === "UNCALLED" && (
+                          <button
+                            onClick={() => updateCallStatus(call.id, "CALLED")}
+                            disabled={updating === call.id}
+                            className="flex-1 bg-yellow-500 text-white px-4 py-2.5 rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
+                          >
+                            Mark as Called
+                          </button>
+                        )}
                         <button
-                          onClick={() => updateCallStatus(call.id, "CALLED")}
+                          onClick={() => updateCallStatus(call.id, "ANSWERED")}
                           disabled={updating === call.id}
-                          className="flex-1 bg-yellow-500 text-white px-4 py-2.5 rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
+                          className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
                         >
-                          Mark as Called
+                          ✓ Answered
                         </button>
-                      )}
-                      <button
-                        onClick={() => updateCallStatus(call.id, "ANSWERED")}
-                        disabled={updating === call.id}
-                        className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
-                      >
-                        ✓ Answered
-                      </button>
-                      <button
-                        onClick={() => updateCallStatus(call.id, "NO_ANSWER")}
-                        disabled={updating === call.id}
-                        className="flex-1 bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
-                      >
-                        ✗ No Answer
-                      </button>
-                    </div>
-                  )}
+                        <button
+                          onClick={() => updateCallStatus(call.id, "NO_ANSWER")}
+                          disabled={updating === call.id}
+                          className="flex-1 bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
+                        >
+                          ✗ No Answer
+                        </button>
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
@@ -370,11 +401,21 @@ export default function Dashboard({ data, initData }: DashboardProps) {
         {/* Info Card */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-5">
           <p className="text-sm text-blue-900 leading-relaxed">
-            <strong>✝ Remember:</strong> Every member is both a caller and responder.
-            No one is forgotten in spiritual responsibility.
+            <strong>✝ Remember:</strong> Every member is both a caller and
+            responder. No one is forgotten in spiritual responsibility.
           </p>
         </div>
       </div>
+
+      {showProfileModal && (
+        <ProfileCompletionModal
+          initData={initData}
+          onCompleteAction={() => {
+            setShowProfileModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

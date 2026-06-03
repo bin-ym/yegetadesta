@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useTelegram } from "../hooks/useTelegram";
-import { Shield, Lock, Users, Book, BookOpen, Clock } from "lucide-react";
+import {
+  Shield,
+  Lock,
+  Users,
+  Book,
+  BookOpen,
+  Clock,
+  Network,
+} from "lucide-react";
 import LoadingScreen from "../components/LoadingScreen";
 import UserManagement from "../components/admin/UserManagement";
 import ContentManagement from "../components/admin/ContentManagement";
 import PendingUsersManagement from "../components/admin/PendingUsersManagement";
+import TreeManagement from "../components/admin/TreeManagement";
 
 interface User {
   id: string;
@@ -25,7 +34,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "pending" | "misbak" | "minbabat">("users");
+  const [activeTab, setActiveTab] = useState<
+    "users" | "pending" | "misbak" | "minbabat" | "tree"
+  >("users");
 
   // Login state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -125,7 +136,9 @@ export default function AdminPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
               <Lock className="w-8 h-8 text-purple-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Login</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Admin Login
+            </h1>
             <p className="text-gray-600 text-sm">ቅዳሴ ጥሪ - Kidase Call</p>
           </div>
 
@@ -234,10 +247,11 @@ export default function AdminPage() {
           <div className="flex border-b">
             <button
               onClick={() => setActiveTab("users")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "users"
-                ? "text-purple-600 border-b-2 border-purple-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
+                activeTab === "users"
+                  ? "text-purple-600 border-b-2 border-purple-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
             >
               <Users className="w-5 h-5" />
               Users
@@ -245,10 +259,11 @@ export default function AdminPage() {
             {isSuperAdmin && (
               <button
                 onClick={() => setActiveTab("pending")}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "pending"
-                  ? "text-orange-600 border-b-2 border-orange-600"
-                  : "text-gray-600 hover:text-gray-900"
-                  }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
+                  activeTab === "pending"
+                    ? "text-orange-600 border-b-2 border-orange-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
               >
                 <Clock className="w-5 h-5" />
                 Pending
@@ -256,23 +271,36 @@ export default function AdminPage() {
             )}
             <button
               onClick={() => setActiveTab("misbak")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "misbak"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
+                activeTab === "misbak"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
             >
               <Book className="w-5 h-5" />
               ምስባክ
             </button>
             <button
               onClick={() => setActiveTab("minbabat")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "minbabat"
-                ? "text-green-600 border-b-2 border-green-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
+                activeTab === "minbabat"
+                  ? "text-green-600 border-b-2 border-green-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
             >
               <BookOpen className="w-5 h-5" />
               ምንባባት
+            </button>
+            <button
+              onClick={() => setActiveTab("tree")}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
+                activeTab === "tree"
+                  ? "text-indigo-600 border-b-2 border-indigo-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Network className="w-5 h-5" />
+              Call Tree
             </button>
           </div>
         </div>
@@ -282,12 +310,12 @@ export default function AdminPage() {
           <UserManagement
             currentUser={currentUser}
             isSuperAdmin={isSuperAdmin}
-            initData={initData}
+            initData={initData || "web-bypass-token"}
           />
         )}
 
         {activeTab === "pending" && isSuperAdmin && (
-          <PendingUsersManagement initData={initData} />
+          <PendingUsersManagement initData={initData || "web-bypass-token"} />
         )}
 
         {activeTab === "misbak" && (
@@ -304,6 +332,10 @@ export default function AdminPage() {
             isSuperAdmin={isSuperAdmin}
             isAdmin={currentUser?.role === "ADMIN"}
           />
+        )}
+
+        {activeTab === "tree" && (
+          <TreeManagement initData={initData || "web-bypass-token"} />
         )}
       </div>
     </div>

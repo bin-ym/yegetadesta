@@ -281,3 +281,54 @@ export async function createWeeklyCycle() {
     },
   });
 }
+
+// ────────────────────────────────────────────────────────────────
+// Auto-integrate single user
+// ────────────────────────────────────────────────────────────────
+
+export async function integrateUserIntoTree(userId: string) {
+  const cycle = await prisma.weeklyCycle.findFirst({
+    where: { phase: { in: ["BUILDING", "PREVIEW", "ACTIVE"] } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!cycle) return null;
+
+  const nodeCount = await prisma.treeNode.count({
+    where: { cycleId: cycle.id },
+  });
+
+  const info = calculateNodeInfo(nodeCount);
+
+  let parentNodeId = null;
+  if (info.parentIndex >= 0) {
+    const parentPos = positionLabel(info.parentIndex);
+    const parentNode = await prisma.treeNode.findFirst({
+      where: { cycleId: cycle.id, position: parentPos },
+    });
+    parentNodeId = parentNode?.id || null;
+  }
+
+  const newNode = await prisma.treeNode.create({
+    data: {
+      cycleId: cycle.id,
+      userId: userId,
+      position: info.position,
+      level: info.level,
+      parentNodeId: parentNodeId,
+    },
+  });
+
+  if (parentNodeId) {
+    await prisma.callEdge.create({
+      data: {
+        cycleId: cycle.id,
+        callerNodeId: parentNodeId,
+        calleeNodeId: newNode.id,
+        status: CallStatus.UNCALLED,
+      },
+    });
+  }
+
+  return newNode;
+}

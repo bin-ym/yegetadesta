@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateTelegramWebAppData } from "@/lib/telegram-auth";
+import { integrateUserIntoTree } from "@/lib/tree-engine";
 
 // Get all pending users
 export async function GET(req: NextRequest) {
@@ -116,6 +117,13 @@ export async function POST(req: NextRequest) {
             status: "WAITING",
           },
         });
+
+        // AUTO-ADD TO TREE (IMMEDIATE INTEGRATION)
+        try {
+          await integrateUserIntoTree(newUser.id);
+        } catch (treeErr) {
+          console.error("Auto-add tree error from pending:", treeErr);
+        }
       }
 
       // Update pending user status
@@ -130,7 +138,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "User approved and added to next pool",
+        message: "User approved and added to next pool & tree",
         user: newUser,
       });
     } else if (action === "reject") {

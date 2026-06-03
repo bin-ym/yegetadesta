@@ -54,12 +54,18 @@ export default function Dashboard({ data, initData }: DashboardProps) {
       }
     }
     fetchHistory();
+  }, [initData]);
 
-    // Check if profile is incomplete
-    if (!user.baptismName || !user.phoneNumber || !user.address) {
-      setShowProfileModal(true);
-    }
-  }, [initData, user]);
+  // Robust profile completeness check (safe for null/undefined)
+  const isProfileIncomplete =
+    !user.baptismName ||
+    (user.baptismName || "").trim() === "" ||
+    !user.phoneNumber ||
+    (user.phoneNumber || "").trim() === "" ||
+    !user.address ||
+    (user.address || "").trim() === "";
+
+  const shouldShowModal = showProfileModal || isProfileIncomplete;
 
   const updateCallStatus = async (callEdgeId: string, status: CallStatus) => {
     setUpdating(callEdgeId);
@@ -86,6 +92,17 @@ export default function Dashboard({ data, initData }: DashboardProps) {
     }
   };
 
+  // Profile Modal reusable element
+  const ProfileModalElement = shouldShowModal ? (
+    <ProfileCompletionModal
+      initData={initData}
+      onCompleteAction={() => {
+        setShowProfileModal(false);
+        window.location.reload();
+      }}
+    />
+  ) : null;
+
   if (!currentCycle) {
     return (
       <div className="min-h-screen pb-20 p-4 bg-gradient-to-b from-blue-50 to-white">
@@ -100,6 +117,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
             </p>
           </div>
         </div>
+        {ProfileModalElement}
       </div>
     );
   }
@@ -122,6 +140,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
             </div>
           </div>
         </div>
+        {ProfileModalElement}
       </div>
     );
   }
@@ -167,6 +186,8 @@ export default function Dashboard({ data, initData }: DashboardProps) {
 
   const getPhaseColor = (phase: string) => {
     switch (phase) {
+      case "BUILDING":
+        return "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white";
       case "ACTIVE":
         return "bg-gradient-to-r from-green-500 to-green-600 text-white";
       case "PREVIEW":
@@ -406,16 +427,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
           </p>
         </div>
       </div>
-
-      {showProfileModal && (
-        <ProfileCompletionModal
-          initData={initData}
-          onCompleteAction={() => {
-            setShowProfileModal(false);
-            window.location.reload();
-          }}
-        />
-      )}
+      {ProfileModalElement}
     </div>
   );
 }

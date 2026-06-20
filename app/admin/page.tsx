@@ -186,7 +186,7 @@ export default function AdminPage() {
               Login
             </button>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-xs text-blue-800">
                 <strong>Demo Credentials:</strong>
                 <br />
@@ -194,7 +194,7 @@ export default function AdminPage() {
                 <br />
                 Admin: adPass
               </p>
-            </div>
+            </div> */}
           </form>
         </div>
       </div>
@@ -247,11 +247,10 @@ export default function AdminPage() {
           <div className="flex border-b">
             <button
               onClick={() => setActiveTab("users")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
-                activeTab === "users"
-                  ? "text-purple-600 border-b-2 border-purple-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "users"
+                ? "text-purple-600 border-b-2 border-purple-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               <Users className="w-5 h-5" />
               Users
@@ -259,11 +258,10 @@ export default function AdminPage() {
             {isSuperAdmin && (
               <button
                 onClick={() => setActiveTab("pending")}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
-                  activeTab === "pending"
-                    ? "text-orange-600 border-b-2 border-orange-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "pending"
+                  ? "text-orange-600 border-b-2 border-orange-600"
+                  : "text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 <Clock className="w-5 h-5" />
                 Pending
@@ -271,33 +269,30 @@ export default function AdminPage() {
             )}
             <button
               onClick={() => setActiveTab("misbak")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
-                activeTab === "misbak"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "misbak"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               <Book className="w-5 h-5" />
               ምስባክ
             </button>
             <button
               onClick={() => setActiveTab("minbabat")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
-                activeTab === "minbabat"
-                  ? "text-green-600 border-b-2 border-green-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "minbabat"
+                ? "text-green-600 border-b-2 border-green-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               <BookOpen className="w-5 h-5" />
               ምንባባት
             </button>
             <button
               onClick={() => setActiveTab("tree")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${
-                activeTab === "tree"
-                  ? "text-indigo-600 border-b-2 border-indigo-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-medium transition-colors ${activeTab === "tree"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               <Network className="w-5 h-5" />
               Call Tree

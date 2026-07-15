@@ -237,3 +237,31 @@ enum PoolStatus {
   ASSIGNED
   SKIPPED
 }
+
+model Misbak {
+  id          Int      @id @default(autoincrement())
+  date        String   @unique
+  dayOfWeek   String
+  geez        String   @db.Text
+  translation String   @db.Text
+  liturgy     String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+model Minbabat {
+  id          Int      @id @default(autoincrement())
+  date        String
+  category    String
+  title       String
+  content     String   @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date, category])
+  @@index([date])
+}

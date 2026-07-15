@@ -41,23 +41,13 @@ export default function MinbabatPage() {
   const currentDate = weekDates[selectedDay];
 
   const currentEthiopianDate = currentDate
-    ? `${currentDate.month} ${currentDate.day}`
+    ? `${currentDate.month} ${currentDate.day} ${currentDate.year}`
     : "";
 
-  // Find the current reading by iterating over the months
+  // Find the current reading by direct key lookup (API returns { "ሐምሌ 8 2018": { category: {...} } })
   let selectedReadings: any = null;
-  if (currentEthiopianDate && Object.keys(readings).length > 0) {
-    for (const month in readings) {
-      if (Array.isArray(readings[month])) {
-        const found = readings[month].find(
-          (item: any) => item.date === currentEthiopianDate,
-        );
-        if (found) {
-          selectedReadings = found;
-          break;
-        }
-      }
-    }
+  if (currentEthiopianDate && readings[currentEthiopianDate]) {
+    selectedReadings = readings[currentEthiopianDate];
   }
 
   if (loading) {

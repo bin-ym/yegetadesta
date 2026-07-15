@@ -46,10 +46,10 @@ export default function MisbakPage() {
   const days = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
   const currentDate = weekDates[selectedDay];
 
-  // Find misbak for selected day by matching the Ethiopian date
+  // Find misbak for selected day by matching the Ethiopian date (with year)
   let selectedMisbak = null;
   if (currentDate) {
-    const currentEthiopianDate = `${currentDate.month} ${currentDate.day}`;
+    const currentEthiopianDate = `${currentDate.month} ${currentDate.day} ${currentDate.year}`;
     selectedMisbak = misbakData.find(
       (item) => item.date === currentEthiopianDate,
     );

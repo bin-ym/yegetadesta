@@ -7,7 +7,10 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "migrate-data": "tsx scripts/migrate-to-db.ts",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

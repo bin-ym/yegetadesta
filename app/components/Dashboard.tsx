@@ -11,9 +11,11 @@ import {
   Clock,
   PhoneCall,
   History,
-  User,
+  ShieldCheck,
+  Calendar,
 } from "lucide-react";
 import ProfileCompletionModal from "./ProfileCompletionModal";
+import { getEthiopianWeekInfo } from "@/lib/ethiopian-calendar";
 
 interface DashboardProps {
   data: DashboardData;
@@ -35,6 +37,8 @@ export default function Dashboard({ data, initData }: DashboardProps) {
     myOutgoingCalls,
     myIncomingCall,
   } = data;
+
+  const ethWeekInfo = getEthiopianWeekInfo();
 
   useEffect(() => {
     // Fetch past cycles
@@ -202,13 +206,13 @@ export default function Dashboard({ data, initData }: DashboardProps) {
   return (
     <div className="min-h-screen pb-20 p-4 bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-2xl mx-auto space-y-4">
-        {/* Header with Cycle Info */}
+        {/* Header with Ethiopian Calendar Cycle Info */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h1 className="text-2xl font-bold">✝ ቅዳሴ ጥሪ</h1>
-              <p className="text-blue-100 text-sm">
-                Week {currentCycle.weekNumber}, {currentCycle.year}
+              <p className="text-blue-100 text-sm font-medium mt-0.5">
+                {ethWeekInfo.formatted}
               </p>
             </div>
             <button
@@ -219,7 +223,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
             </button>
           </div>
           <div
-            className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getPhaseColor(currentCycle.phase)}`}
+            className={`inline-block px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide ${getPhaseColor(currentCycle.phase)}`}
           >
             {currentCycle.phase}
           </div>
@@ -240,7 +244,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                 >
                   <div className="flex justify-between items-center mb-2">
                     <p className="font-medium text-gray-900">
-                      Week {snapshot.weekNumber}, {snapshot.year}
+                      ሳምንት {snapshot.weekNumber}, {snapshot.year} ዓ.ም.
                     </p>
                     <span className="text-xs text-gray-500">
                       {new Date(snapshot.createdAt).toLocaleDateString("am-ET")}
@@ -272,79 +276,20 @@ export default function Dashboard({ data, initData }: DashboardProps) {
           </div>
         )}
 
-        {/* User Position Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <User className="w-5 h-5 text-gray-600" />
-            Your Position
-          </h2>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center font-bold text-2xl shadow-lg">
-              {myNode.position}
-            </div>
-            <div>
-              <p className="font-semibold text-lg text-gray-900">
-                {user.fullName}
-              </p>
-              <p className="text-sm text-gray-500">Level {myNode.level}</p>
-              {user.baptismName && (
-                <p className="text-xs text-blue-600">✝ {user.baptismName}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Who Will Call You */}
-        {myParent && (
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg p-6 border border-purple-200">
-            <h2 className="text-lg font-semibold mb-4 text-purple-900">
-              Who Will Call You
-            </h2>
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-md">
-                  {myParent.position}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
-                    {myParent.user.fullName}
-                  </p>
-                  {myParent.user.baptismName && (
-                    <p className="text-xs text-purple-600">
-                      ✝ {myParent.user.baptismName}
-                    </p>
-                  )}
-                  {myParent.user.phoneNumber && (
-                    <button
-                      onClick={() =>
-                        makePhoneCall(
-                          myParent.user.phoneNumber!,
-                          myParent.user.fullName,
-                        )
-                      }
-                      className="flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 mt-1"
-                    >
-                      <PhoneCall className="w-4 h-4" />
-                      {myParent.user.phoneNumber}
-                    </button>
-                  )}
-                </div>
-                {myIncomingCall && (
-                  <div className={getStatusColor(myIncomingCall.status)}>
-                    {getStatusIcon(myIncomingCall.status)}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Your Responsibility */}
+        {/* 1. YOUR RESPONSIBILITY (APPEARS FIRST) */}
         {myOutgoingCalls.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-2">Your Responsibility</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Call these members on Saturday night (4:00 AM)
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-green-600" />
+                የእርስዎ ኃላፊነት (Your Responsibility)
+              </h2>
+              <span className="text-xs font-semibold bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">
+                {myOutgoingCalls.length} አባላት
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              በእሁድ ንጋት (ቅዳሜ ምሽት 10:00 ሰዓት) የሚደውሉላቸው አባላት
             </p>
             <div className="space-y-3">
               {myOutgoingCalls.map((call) => (
@@ -373,7 +318,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                               call.calleeNode.user.fullName,
                             )
                           }
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1"
+                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1 font-mono font-medium"
                         >
                           <PhoneCall className="w-4 h-4" />
                           {call.calleeNode.user.phoneNumber}
@@ -392,7 +337,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                           <button
                             onClick={() => updateCallStatus(call.id, "CALLED")}
                             disabled={updating === call.id}
-                            className="flex-1 bg-yellow-500 text-white px-4 py-2.5 rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
+                            className="flex-1 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-xs font-semibold shadow-sm transition-colors"
                           >
                             Mark as Called
                           </button>
@@ -400,14 +345,14 @@ export default function Dashboard({ data, initData }: DashboardProps) {
                         <button
                           onClick={() => updateCallStatus(call.id, "ANSWERED")}
                           disabled={updating === call.id}
-                          className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
+                          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs font-semibold shadow-sm transition-colors"
                         >
                           ✓ Answered
                         </button>
                         <button
                           onClick={() => updateCallStatus(call.id, "NO_ANSWER")}
                           disabled={updating === call.id}
-                          className="flex-1 bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium shadow-sm transition-colors"
+                          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 text-xs font-semibold shadow-sm transition-colors"
                         >
                           ✗ No Answer
                         </button>
@@ -419,11 +364,59 @@ export default function Dashboard({ data, initData }: DashboardProps) {
           </div>
         )}
 
-        {/* Info Card */}
+        {/* 2. WHO WILL CALL YOU (APPEARS NEXT) */}
+        {myParent && (
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg p-6 border border-purple-200">
+            <h2 className="text-lg font-bold mb-1 text-purple-900 flex items-center gap-2">
+              <Phone className="w-5 h-5 text-purple-700" />
+              የሚደውልልዎት (Who Will Call You)
+            </h2>
+            <p className="text-xs text-purple-700 mb-4">
+              እርስዎን የሚቀሰቅስዎት አባል
+            </p>
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-md">
+                  {myParent.position}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">
+                    {myParent.user.fullName}
+                  </p>
+                  {myParent.user.baptismName && (
+                    <p className="text-xs text-purple-600 font-medium">
+                      ✝ {myParent.user.baptismName}
+                    </p>
+                  )}
+                  {myParent.user.phoneNumber && (
+                    <button
+                      onClick={() =>
+                        makePhoneCall(
+                          myParent.user.phoneNumber!,
+                          myParent.user.fullName,
+                        )
+                      }
+                      className="flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 mt-1 font-mono font-medium"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                      {myParent.user.phoneNumber}
+                    </button>
+                  )}
+                </div>
+                {myIncomingCall && (
+                  <div className={getStatusColor(myIncomingCall.status)}>
+                    {getStatusIcon(myIncomingCall.status)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info Notice Card */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-5">
           <p className="text-sm text-blue-900 leading-relaxed">
-            <strong>✝ Remember:</strong> Every member is both a caller and
-            responder. No one is forgotten in spiritual responsibility.
+            <strong>✝ ማስታወሻ:</strong> እያንዳንዱ አባል ደዋይ እና ተደዋይ ነው። በመንፈሳዊ አገልግሎት ውስጥ ማንም አይረሳም።
           </p>
         </div>
       </div>
@@ -431,3 +424,4 @@ export default function Dashboard({ data, initData }: DashboardProps) {
     </div>
   );
 }
+

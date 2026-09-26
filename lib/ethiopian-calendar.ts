@@ -135,3 +135,26 @@ export function getCurrentWeekEthiopianDates(): { [key: string]: EthiopianDate }
 
     return weekDates;
 }
+
+// Get Ethiopian calendar week number and year info
+export function getEthiopianWeekInfo(date: Date = new Date()): {
+    ethWeek: number;
+    ethYear: number;
+    ethMonth: string;
+    ethDay: number;
+    formatted: string;
+} {
+    const ethDate = gregorianToEthiopian(date);
+    const monthIndex = ethiopianMonths.indexOf(ethDate.month);
+    const totalDaysInYear = (monthIndex >= 0 ? monthIndex : 0) * 30 + ethDate.day;
+    const ethWeek = Math.max(1, Math.ceil(totalDaysInYear / 7));
+
+    return {
+        ethWeek,
+        ethYear: ethDate.year,
+        ethMonth: ethDate.month,
+        ethDay: ethDate.day,
+        formatted: `ሳምንት ${ethWeek}, ${ethDate.year} ዓ.ም. (${ethDate.month})`,
+    };
+}
+

@@ -85,7 +85,9 @@ export default function MisbakPage() {
 
   const handleJoinRequest = async () => {
     const tg = window.Telegram?.WebApp;
-    if (!tg) {
+    const initData = tg?.initData || "";
+
+    if (!initData) {
       setLinkMessage("Please open this page in Telegram to join.");
       return;
     }
@@ -94,41 +96,29 @@ export default function MisbakPage() {
     setLinkMessage(null);
 
     try {
-      // Request contact access - returns true if user shared their contact
-      const granted: boolean = await (tg as any).requestContact();
-      
-      if (granted) {
-        const phone = (tg.initDataUnsafe?.user as any)?.phone_number;
-        if (phone) {
-          const initData = tg.initData || "";
+      const response = await fetch("/api/auth/join-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }),
+      });
 
-          const response = await fetch("/api/auth/link-phone", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData, phoneNumber: phone }),
-          });
+      const data = await response.json();
 
-          const data = await response.json();
-
-          if (data.linked) {
-            setLinkMessage("✅ Account linked! You can now access the Call Tree.");
-            setUserStatus("registered");
-          } else if (data.pending) {
-            setUserStatus("pending");
-            setLinkMessage(null);
-          } else {
-            setLinkMessage("❌ Could not link. Contact the admin.");
-          }
-        } else {
-          setLinkMessage("Could not get your phone number. Try again.");
-        }
+      if (data.registered || data.approved) {
+        setLinkMessage("✅ Account active! You can now access the Call Tree.");
+        setUserStatus("registered");
+      } else if (data.pending) {
+        setUserStatus("pending");
+        setLinkMessage(null);
+      } else if (data.error) {
+        setLinkMessage(`❌ ${data.error}`);
       } else {
-        setLinkMessage("Phone sharing was cancelled.");
+        setUserStatus("pending");
       }
-      setLinkingPhone(false);
     } catch (err) {
-      console.error("Phone request error:", err);
-      setLinkMessage("Failed to request phone number. Please try again.");
+      console.error("Join request error:", err);
+      setLinkMessage("Failed to submit request. Please try again.");
+    } finally {
       setLinkingPhone(false);
     }
   };

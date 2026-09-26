@@ -4,6 +4,7 @@
 import { prisma } from "./prisma";
 import { CallStatus } from "@prisma/client";
 import { randomUUID } from "crypto";
+import { getEthiopianWeekInfo } from "./ethiopian-calendar";
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -268,16 +269,7 @@ export function computeCurrentPhase(now: Date): CyclePhaseType {
 
 export async function createWeeklyCycle() {
   const now = new Date();
-  const year = now.getUTCFullYear();
-
-  const startOfYear = new Date(Date.UTC(year, 0, 1));
-
-  const weekNumber = Math.ceil(
-    ((now.getTime() - startOfYear.getTime()) / 86400000 +
-      startOfYear.getUTCDay() +
-      1) /
-      7,
-  );
+  const { ethWeek, ethYear } = getEthiopianWeekInfo(now);
 
   const saturday = new Date(now);
   const daysUntilSaturday = (6 - now.getUTCDay() + 7) % 7;
@@ -291,8 +283,8 @@ export async function createWeeklyCycle() {
 
   return prisma.weeklyCycle.create({
     data: {
-      weekNumber,
-      year,
+      weekNumber: ethWeek,
+      year: ethYear,
       phase: "BUILDING",
       startDate: saturday,
       endDate: sunday,

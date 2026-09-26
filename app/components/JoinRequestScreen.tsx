@@ -13,58 +13,50 @@ interface Props {
 }
 
 export default function JoinRequestScreen({ onRequestSent, onLinked }: Props) {
-  const [linkingPhone, setLinkingPhone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [linkMessage, setLinkMessage] = useState<string | null>(null);
 
   const handleJoinRequest = async () => {
     const tg = window.Telegram?.WebApp;
-    if (!tg) {
-      setLinkMessage("Please open this page in Telegram to join.");
+    const initData = tg?.initData || "";
+
+    if (!initData) {
+      setLinkMessage("Please open this app inside Telegram to join.");
       return;
     }
 
-    setLinkingPhone(true);
+    setSubmitting(true);
     setLinkMessage(null);
 
     try {
-      // Request contact access - returns true if user shared their contact
-      const granted: boolean = await (tg as any).requestContact();
+      const response = await fetch("/api/auth/join-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }),
+      });
 
-      if (granted) {
-        const phone = (tg.initDataUnsafe?.user as any)?.phone_number;
-        if (phone) {
-          const initData = tg.initData || "";
+      const data = await response.json();
 
-          const response = await fetch("/api/auth/link-phone", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData, phoneNumber: phone }),
-          });
-
-          const data = await response.json();
-
-          if (data.linked) {
-            // Account already existed and got linked — reload into the app
-            onLinked();
-            return;
-          } else if (data.pending) {
-            // Request submitted — switch to the pending state
-            onRequestSent();
-            return;
-          } else {
-            setLinkMessage("❌ Could not link. Contact the admin.");
-          }
-        } else {
-          setLinkMessage("Could not get your phone number. Try again.");
-        }
-      } else {
-        setLinkMessage("Phone sharing was cancelled.");
+      if (data.registered || data.approved) {
+        onLinked();
+        return;
       }
-      setLinkingPhone(false);
+
+      if (data.pending) {
+        onRequestSent();
+        return;
+      }
+
+      if (data.error) {
+        setLinkMessage(`❌ ${data.error}`);
+      } else {
+        onRequestSent();
+      }
     } catch (err) {
-      console.error("Phone request error:", err);
-      setLinkMessage("Failed to request phone number. Please try again.");
-      setLinkingPhone(false);
+      console.error("Join request error:", err);
+      setLinkMessage("Failed to submit request. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -96,11 +88,11 @@ export default function JoinRequestScreen({ onRequestSent, onLinked }: Props) {
           </p>
           <button
             onClick={handleJoinRequest}
-            disabled={linkingPhone}
+            disabled={submitting}
             className="w-full bg-white text-blue-700 font-semibold py-3 rounded-xl hover:bg-blue-50 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
           >
             <UserPlus className="w-5 h-5" />
-            {linkingPhone ? "Connecting..." : "Send Join Request — ይቀላቀሉ"}
+            {submitting ? "Submitting..." : "Send Join Request — ይቀላቀሉ"}
           </button>
           {linkMessage && (
             <div className="mt-3 p-3 bg-white/15 rounded-lg text-sm text-center">

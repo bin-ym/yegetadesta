@@ -25,23 +25,46 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No active cycle" }, { status: 404 });
     }
 
-    const treeNodes = await prisma.treeNode.findMany({
-      where: { cycleId: currentCycle.id },
-      include: {
-        user: true,
-        parent: { include: { user: true } },
-        children: { include: { user: true } },
-      },
-      orderBy: { position: "asc" },
-    });
-
-    const callEdges = await prisma.callEdge.findMany({
-      where: { cycleId: currentCycle.id },
-      include: {
-        callerNode: { include: { user: true } },
-        calleeNode: { include: { user: true } },
-      },
-    });
+    const [treeNodes, callEdges] = await Promise.all([
+      prisma.treeNode.findMany({
+        where: {
+          cycleId: currentCycle.id,
+          user: {
+            status: "ACTIVE",
+            active: true,
+          },
+        },
+        include: {
+          user: true,
+          parent: { include: { user: true } },
+          children: {
+            where: {
+              user: {
+                status: "ACTIVE",
+                active: true,
+              },
+            },
+            include: { user: true },
+          },
+        },
+        orderBy: { position: "asc" },
+      }),
+      prisma.callEdge.findMany({
+        where: {
+          cycleId: currentCycle.id,
+          callerNode: {
+            user: { status: "ACTIVE", active: true },
+          },
+          calleeNode: {
+            user: { status: "ACTIVE", active: true },
+          },
+        },
+        include: {
+          callerNode: { include: { user: true } },
+          calleeNode: { include: { user: true } },
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       cycle: currentCycle,

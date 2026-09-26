@@ -114,40 +114,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "approve") {
-      // Create the user
+      // Create the user as INACTIVE — they become ACTIVE after completing
+      // their profile (baptism name, phone number, address)
       const newUser = await prisma.user.create({
         data: {
           telegramId: pendingUser.telegramId,
           fullName: pendingUser.fullName,
           username: pendingUser.username,
           role: "MEMBER",
-          status: "ACTIVE",
+          status: "INACTIVE",
         },
       });
-
-      // Add to waiting pool for next cycle
-      const currentCycle = await prisma.weeklyCycle.findFirst({
-        where: { phase: { in: ["BUILDING", "PREVIEW"] } },
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (currentCycle) {
-        await prisma.waitingPool.create({
-          data: {
-            cycleId: currentCycle.id,
-            userId: newUser.id,
-            position: 0,
-            status: "WAITING",
-          },
-        });
-
-        // AUTO-ADD TO TREE (IMMEDIATE INTEGRATION)
-        try {
-          await integrateUserIntoTree(newUser.id);
-        } catch (treeErr) {
-          console.error("Auto-add tree error from pending:", treeErr);
-        }
-      }
 
       // Update pending user status
       await prisma.pendingUser.update({
@@ -162,7 +139,7 @@ export async function POST(req: NextRequest) {
       // SEND BOT NOTIFICATION
       await sendTelegramMessage(
         pendingUser.telegramId,
-        `<b>እንኳን ደስ አለዎት!</b> 🎉\n\nየቅዳሴ ጥሪ አገልግሎት ጥያቄዎ ተቀባይነት አግኝቷል። አሁን ወደ አፕሊኬሽኑ በመግባት አገልግሎቱን መጠቀም ይችላሉ።\n\n✝ እግዚአብሔር አገልግሎታችንን ይቀበልልን።`,
+        `<b>እንኳን ደስ አለዎት!</b> 🎉\n\nየቅዳሴ ጥሪ አገልግሎት ጥያቄዎ ተቀባይነት አግኝቷል። አሁን ወደ አፕሊኬሽኑ በመግባት መረጃዎን ወደ ፕሮፋይልዎ አስገብተው አገልግሎቱን ይጠቀሙ።\n\n✝ እግዚአብሔር አገልግሎታችንን ይቀበልልን።`,
       );
 
       return NextResponse.json({

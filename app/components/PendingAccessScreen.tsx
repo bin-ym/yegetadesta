@@ -1,8 +1,43 @@
 "use client";
 
-import { Clock, CheckCircle } from "lucide-react";
+import { useState } from "react";
+import { Clock, CheckCircle, RefreshCw } from "lucide-react";
 
 export default function PendingAccessScreen() {
+    const [checking, setChecking] = useState(false);
+    const [result, setResult] = useState<"approved" | "still_pending" | "rejected" | null>(null);
+
+    const checkStatus = async () => {
+        const initData = window.Telegram?.WebApp?.initData || "";
+        if (!initData) return;
+
+        setChecking(true);
+        try {
+            const response = await fetch("/api/tree/dashboard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ initData }),
+            });
+            const data = await response.json();
+
+            if (data.notRegistered && data.pending) {
+                setResult("still_pending");
+            } else if (data.error === "Your request was rejected") {
+                setResult("rejected");
+            } else if (data.user || data.profileIncomplete) {
+                // Approved (user record now exists)
+                window.location.reload();
+                return;
+            } else {
+                setResult("still_pending");
+            }
+        } catch {
+            setResult("still_pending");
+        } finally {
+            setChecking(false);
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-yellow-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
@@ -27,18 +62,37 @@ export default function PendingAccessScreen() {
                             </p>
                             <ul className="text-xs text-blue-800 space-y-1">
                                 <li>• Super Admin will review your request</li>
-                                <li>• Once approved, you'll be added to the next pool</li>
+                                <li>• Once approved, complete your profile to activate</li>
                                 <li>• You'll receive access to all features</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-xs text-gray-600">
-                        Please check back later or contact the administrator if you have any questions.
-                    </p>
-                </div>
+                {result === "still_pending" && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-orange-800">
+                            ⏳ Still waiting for approval. Please check back later.
+                        </p>
+                    </div>
+                )}
+
+                {result === "rejected" && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-red-800">
+                            ❌ Your request was rejected. Please contact the administrator.
+                        </p>
+                    </div>
+                )}
+
+                <button
+                    onClick={checkStatus}
+                    disabled={checking}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 shadow-md"
+                >
+                    <RefreshCw className={`w-4 h-4 ${checking ? "animate-spin" : ""}`} />
+                    {checking ? "Checking..." : "Check Approval Status"}
+                </button>
             </div>
         </div>
     );

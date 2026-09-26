@@ -3,6 +3,7 @@
 
 import { prisma } from "./prisma";
 import { CallStatus } from "@prisma/client";
+import { randomUUID } from "crypto";
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -90,73 +91,90 @@ export function buildTreeNodes(userIds: string[]): BuiltNode[] {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Persist tree (FIXED - no transaction timeout issues)
+// Persist tree (Optimized - Instant bulk inserts, no timeout)
 // ────────────────────────────────────────────────────────────────
 
 export async function persistTree(input: BuildInput): Promise<void> {
   const { cycleId, userIds } = input;
 
-  const builtNodes = buildTreeNodes(userIds);
-
-  await prisma.$transaction(
-    async (tx) => {
-      // 1. Clean old data
+  if (userIds.length === 0) {
+    await prisma.$transaction(async (tx) => {
       await tx.callEdge.deleteMany({ where: { cycleId } });
       await tx.treeNode.deleteMany({ where: { cycleId } });
+    });
+    return;
+  }
 
-      // 2. Insert all nodes
-      await tx.treeNode.createMany({
-        data: builtNodes.map((node) => ({
+  // Pre-generate all node IDs and parent relationships in memory
+  interface PreparedNode {
+    id: string;
+    userId: string;
+    position: string;
+    level: number;
+    parentNodeId: string | null;
+  }
+
+  const nodesToInsert: PreparedNode[] = [];
+
+  for (let i = 0; i < userIds.length; i++) {
+    const { level, parentIndex, position } = calculateNodeInfo(i);
+    const id = randomUUID();
+    const parentNodeId = parentIndex >= 0 ? nodesToInsert[parentIndex].id : null;
+
+    nodesToInsert.push({
+      id,
+      userId: userIds[i],
+      position,
+      level,
+      parentNodeId,
+    });
+  }
+
+  // Pre-generate all call edges
+  const edgesToInsert = nodesToInsert
+    .filter((node) => node.parentNodeId !== null)
+    .map((node) => ({
+      id: randomUUID(),
+      cycleId,
+      callerNodeId: node.parentNodeId!,
+      calleeNodeId: node.id,
+      status: CallStatus.UNCALLED,
+      retryCount: 0,
+    }));
+
+  // Execute in a single fast atomic batch transaction (only 4 operations)
+  const operations: any[] = [
+    prisma.callEdge.deleteMany({ where: { cycleId } }),
+    prisma.treeNode.deleteMany({ where: { cycleId } }),
+  ];
+
+  if (nodesToInsert.length > 0) {
+    operations.push(
+      prisma.treeNode.createMany({
+        data: nodesToInsert.map((n) => ({
+          id: n.id,
           cycleId,
-          userId: node.userId,
-          position: node.position,
-          level: node.level,
+          userId: n.userId,
+          position: n.position,
+          level: n.level,
+          parentNodeId: n.parentNodeId,
         })),
-      });
+      }),
+    );
+  }
 
-      // 3. Fetch inserted nodes once
-      const createdNodes = await tx.treeNode.findMany({
-        where: { cycleId },
-      });
+  if (edgesToInsert.length > 0) {
+    operations.push(
+      prisma.callEdge.createMany({
+        data: edgesToInsert,
+      }),
+    );
+  }
 
-      const nodeMap = new Map(createdNodes.map((n) => [n.position, n]));
-
-      // 4. Prepare batch operations (NO AWAIT INSIDE LOOP)
-      const updateOps: any[] = [];
-      const edgeOps: any[] = [];
-
-      for (const node of builtNodes) {
-        if (!node.parentPosition) continue;
-
-        const parent = nodeMap.get(node.parentPosition);
-        const current = nodeMap.get(node.position);
-
-        if (!parent || !current) continue;
-
-        updateOps.push(
-          tx.treeNode.update({
-            where: { id: current.id },
-            data: { parentNodeId: parent.id },
-          }),
-        );
-
-        edgeOps.push(
-          tx.callEdge.create({
-            data: {
-              cycleId,
-              callerNodeId: parent.id,
-              calleeNodeId: current.id,
-              status: CallStatus.UNCALLED,
-            },
-          }),
-        );
-      }
-
-      // 5. Execute in parallel (still inside transaction)
-      await Promise.all([...updateOps, ...edgeOps]);
-    },
-    { timeout: 30000 },
-  );
+  await prisma.$transaction(operations, {
+    maxWait: 20000, // 20s max time to wait for a DB connection
+    timeout: 45000, // 45s max time for the batch to execute
+  });
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -287,12 +305,33 @@ export async function createWeeklyCycle() {
 // ────────────────────────────────────────────────────────────────
 
 export async function integrateUserIntoTree(userId: string) {
+  // Only integrate users who are ACTIVE
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user || user.status !== "ACTIVE" || !user.active) {
+    return null;
+  }
+
   const cycle = await prisma.weeklyCycle.findFirst({
     where: { phase: { in: ["BUILDING", "PREVIEW", "ACTIVE"] } },
     orderBy: { createdAt: "desc" },
   });
 
   if (!cycle) return null;
+
+  // Check if already in cycle tree
+  const existing = await prisma.treeNode.findUnique({
+    where: {
+      cycleId_userId: {
+        cycleId: cycle.id,
+        userId: user.id,
+      },
+    },
+  });
+
+  if (existing) return existing;
 
   const nodeCount = await prisma.treeNode.count({
     where: { cycleId: cycle.id },
@@ -332,3 +371,66 @@ export async function integrateUserIntoTree(userId: string) {
 
   return newNode;
 }
+
+// ────────────────────────────────────────────────────────────────
+// Remove user from active tree (when marked INACTIVE/SUSPENDED)
+// ────────────────────────────────────────────────────────────────
+
+export async function removeUserFromTree(userId: string) {
+  const cycles = await prisma.weeklyCycle.findMany({
+    where: { phase: { in: ["BUILDING", "PREVIEW", "ACTIVE"] } },
+  });
+
+  for (const cycle of cycles) {
+    const node = await prisma.treeNode.findUnique({
+      where: {
+        cycleId_userId: {
+          cycleId: cycle.id,
+          userId,
+        },
+      },
+      include: {
+        children: true,
+      },
+    });
+
+    if (!node) continue;
+
+    // Delete all call edges connected to this node
+    await prisma.callEdge.deleteMany({
+      where: {
+        OR: [
+          { callerNodeId: node.id },
+          { calleeNodeId: node.id },
+        ],
+      },
+    });
+
+    // Re-link children to parent if exists
+    if (node.children.length > 0) {
+      await prisma.treeNode.updateMany({
+        where: { parentNodeId: node.id },
+        data: { parentNodeId: node.parentNodeId },
+      });
+
+      if (node.parentNodeId) {
+        for (const child of node.children) {
+          await prisma.callEdge.create({
+            data: {
+              cycleId: cycle.id,
+              callerNodeId: node.parentNodeId,
+              calleeNodeId: child.id,
+              status: CallStatus.UNCALLED,
+            },
+          });
+        }
+      }
+    }
+
+    // Delete node itself
+    await prisma.treeNode.delete({
+      where: { id: node.id },
+    });
+  }
+}
+

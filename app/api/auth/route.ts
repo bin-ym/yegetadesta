@@ -49,20 +49,30 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Create new pending user request
-        pendingUser = await prisma.pendingUser.create({
-            data: {
-                telegramId: telegramUser.id.toString(),
-                fullName: `${telegramUser.first_name} ${telegramUser.last_name || ""}`.trim(),
-                username: telegramUser.username,
-                status: "PENDING",
-            },
+        // Check if user has a pending request
+        pendingUser = await prisma.pendingUser.findUnique({
+            where: { telegramId: telegramUser.id.toString() },
         });
 
+        if (pendingUser) {
+            if (pendingUser.status === "PENDING") {
+                return NextResponse.json({
+                    pending: true,
+                    message: "Your request is pending approval from Super Admin"
+                }, { status: 200 });
+            } else if (pendingUser.status === "REJECTED") {
+                return NextResponse.json({
+                    error: "Your request was rejected"
+                }, { status: 403 });
+            }
+        }
+
+        // User not found — return not-registered status
+        // The frontend will show a CTA button to initiate the request
         return NextResponse.json({
-            pending: true,
-            message: "Access request submitted. Waiting for Super Admin approval."
-        }, { status: 202 });
+            notRegistered: true,
+            message: "User not registered. Click the button to send a join request."
+        }, { status: 200 });
 
     } catch (error) {
         console.error("Auth error:", error);

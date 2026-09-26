@@ -42,10 +42,11 @@ export async function POST(req: NextRequest) {
         if (pendingUser.status === "PENDING") {
           return NextResponse.json(
             {
+              notRegistered: true,
               pending: true,
               message: "Your request is pending approval from Super Admin",
             },
-            { status: 202 },
+            { status: 200 },
           );
         } else if (pendingUser.status === "REJECTED") {
           return NextResponse.json(
@@ -57,26 +58,16 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Create new pending user request
-      await prisma.pendingUser.create({
-        data: {
-          telegramId: validation.user.id.toString(),
-          fullName:
-            `${validation.user.first_name} ${validation.user.last_name || ""}`.trim(),
-          username: validation.user.username,
-          status: "PENDING",
-        },
-      });
-
-      console.log("Pending user request created");
+      // Don't auto-create pending — let the CTA flow handle it
+      console.log("User not registered — returning notRegistered");
 
       return NextResponse.json(
         {
-          pending: true,
+          notRegistered: true,
           message:
-            "Access request submitted. Waiting for Super Admin approval.",
+            "User not registered. Use the CTA button to send a join request.",
         },
-        { status: 202 },
+        { status: 200 },
       );
     }
 
@@ -124,31 +115,31 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("Fetching tree relationships...");
-    const myParent = myNode.parentNodeId
-      ? await prisma.treeNode.findUnique({
-          where: { id: myNode.parentNodeId },
+    const [myParent, myChildren, myOutgoingCalls, myIncomingCall] =
+      await Promise.all([
+        myNode.parentNodeId
+          ? prisma.treeNode.findUnique({
+              where: { id: myNode.parentNodeId },
+              include: { user: true },
+            })
+          : Promise.resolve(null),
+        prisma.treeNode.findMany({
+          where: { parentNodeId: myNode.id },
           include: { user: true },
-        })
-      : null;
-
-    const myChildren = await prisma.treeNode.findMany({
-      where: { parentNodeId: myNode.id },
-      include: { user: true },
-    });
-
-    const myOutgoingCalls = await prisma.callEdge.findMany({
-      where: { callerNodeId: myNode.id },
-      include: {
-        calleeNode: { include: { user: true } },
-      },
-    });
-
-    const myIncomingCall = await prisma.callEdge.findFirst({
-      where: { calleeNodeId: myNode.id },
-      include: {
-        callerNode: { include: { user: true } },
-      },
-    });
+        }),
+        prisma.callEdge.findMany({
+          where: { callerNodeId: myNode.id },
+          include: {
+            calleeNode: { include: { user: true } },
+          },
+        }),
+        prisma.callEdge.findFirst({
+          where: { calleeNodeId: myNode.id },
+          include: {
+            callerNode: { include: { user: true } },
+          },
+        }),
+      ]);
 
     console.log("Dashboard data fetched successfully");
     return NextResponse.json({

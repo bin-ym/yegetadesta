@@ -7,6 +7,7 @@ import { DashboardData } from "./types";
 import Dashboard from "./components/Dashboard";
 import LoadingScreen from "./components/LoadingScreen";
 import PendingAccessScreen from "./components/PendingAccessScreen";
+import JoinRequestScreen from "./components/JoinRequestScreen";
 
 export default function Home() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [notRegistered, setNotRegistered] = useState(false);
 
   useEffect(() => {
     // Check if running in Telegram
@@ -39,9 +41,16 @@ export default function Home() {
           body: JSON.stringify({ initData }),
         });
 
-        if (response.status === 202) {
-          // User is pending approval
-          setIsPending(true);
+        const data = await response.json();
+
+        if (data.notRegistered) {
+          if (data.pending) {
+            // User already submitted a request
+            setIsPending(true);
+          } else {
+            // Not registered — show the Join banner on the main screen
+            setNotRegistered(true);
+          }
           setLoading(false);
           return;
         }
@@ -50,7 +59,6 @@ export default function Home() {
           throw new Error("Failed to fetch dashboard");
         }
 
-        const data = await response.json();
         setDashboardData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -75,6 +83,18 @@ export default function Home() {
 
   if (isPending) {
     return <PendingAccessScreen />;
+  }
+
+  if (notRegistered) {
+    return (
+      <JoinRequestScreen
+        onRequestSent={() => {
+          setNotRegistered(false);
+          setIsPending(true);
+        }}
+        onLinked={() => window.location.reload()}
+      />
+    );
   }
 
   if (error) {

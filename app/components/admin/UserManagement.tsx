@@ -52,6 +52,7 @@ export default function UserManagement({
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [formError, setFormError] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -59,6 +60,7 @@ export default function UserManagement({
     phoneNumber: "",
     address: "",
     telegramId: "",
+    status: "ACTIVE",
   });
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function UserManagement({
         user.fullName.toLowerCase().includes(q) ||
         user.baptismName?.toLowerCase().includes(q) ||
         user.phoneNumber?.includes(q) ||
-        user.telegramId.includes(q),
+        (user.telegramId && user.telegramId.includes(q)),
     );
     setFilteredUsers(filtered);
   }, [searchQuery, users]);
@@ -93,6 +95,7 @@ export default function UserManagement({
   };
 
   const handleAddUser = async () => {
+    setFormError("");
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
@@ -107,9 +110,13 @@ export default function UserManagement({
         setUsers([newUser, ...users]);
         setShowAddModal(false);
         resetForm();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setFormError(err.error || "Failed to add user");
       }
     } catch (err) {
       console.error("Add user error:", err);
+      setFormError("Failed to add user");
     }
   };
 
@@ -132,9 +139,13 @@ export default function UserManagement({
         setUsers(updatedUsers);
         setShowEditModal(false);
         resetForm();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setFormError(err.error || "Failed to update user");
       }
     } catch (err) {
       console.error("Edit user error:", err);
+      setFormError("Failed to update user");
     }
   };
 
@@ -160,7 +171,9 @@ export default function UserManagement({
       phoneNumber: "",
       address: "",
       telegramId: "",
+      status: "ACTIVE",
     });
+    setFormError("");
     setSelectedUser(null);
   };
 
@@ -172,6 +185,7 @@ export default function UserManagement({
       phoneNumber: user.phoneNumber || "",
       address: user.address || "",
       telegramId: user.telegramId,
+      status: user.status || "ACTIVE",
     });
     setShowEditModal(true);
   };
@@ -432,6 +446,12 @@ export default function UserManagement({
 
             {/* Modal Body */}
             <div className="px-6 py-5 space-y-4">
+              {formError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-xs text-red-700">⚠️ {formError}</p>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   ሙሉ ስም (Full Name)
@@ -493,35 +513,34 @@ export default function UserManagement({
                 </div>
               </div>
 
-              {showAddModal && (
+              {!showAddModal && (
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Telegram ID
+                    ሁኔታ (Status)
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 123456789"
-                    value={formData.telegramId}
+                  <select
+                    value={formData.status}
                     onChange={(e) =>
-                      setFormData({ ...formData, telegramId: e.target.value })
+                      setFormData({ ...formData, status: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all duration-200"
-                  />
-                  <div className="flex items-start gap-2 mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <span className="text-amber-600 text-xs shrink-0 mt-0.5">💡</span>
-                    <p className="text-xs text-amber-800">
-                      Ask the user to message{" "}
-                      <a
-                        href="https://t.me/userinfobot"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium underline hover:text-amber-900"
-                      >
-                        @userinfobot
-                      </a>{" "}
-                      on Telegram to get their ID
-                    </p>
-                  </div>
+                    className={`w-full px-4 py-2.5 border rounded-lg outline-none transition-all duration-200 ${
+                      formData.status === "ACTIVE"
+                        ? "border-green-200 bg-green-50 text-green-700 focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                        : "border-gray-200 bg-gray-50 text-gray-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                    }`}
+                  >
+                    <option value="ACTIVE">ACTIVE — ተጠቃሚ በስራ ላይ</option>
+                    <option value="INACTIVE">INACTIVE — ድህረ ገጽ ዝግ (Disabled)</option>
+                    <option value="SUSPENDED">SUSPENDED — ማገድ</option>
+                  </select>
+                </div>
+              )}
+
+              {showAddModal && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    ℹ️ The user will link their Telegram account when they first access the bot. No Telegram ID needed now.
+                  </p>
                 </div>
               )}
             </div>

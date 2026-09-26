@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Network, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Network, RefreshCw, Send, Image as ImageIcon, Loader2 } from "lucide-react";
 import LoadingScreen from "../LoadingScreen";
+import SendTreeImageModal from "./SendTreeImageModal";
+import { toPng } from "html-to-image";
 
 export default function TreeManagement({ initData }: { initData?: string }) {
   const [treeData, setTreeData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const treeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchTree();
@@ -55,6 +61,44 @@ export default function TreeManagement({ initData }: { initData?: string }) {
     }
   };
 
+  const handleOpenSendModal = async () => {
+    if (!treeContainerRef.current || !treeData?.nodes?.length) {
+      alert("No tree diagram available to capture.");
+      return;
+    }
+
+    setCapturing(true);
+    setShowSendModal(true);
+    setGeneratedImageUrl(null);
+
+    try {
+      const node = treeContainerRef.current;
+      const scrollWidth = node.scrollWidth || node.offsetWidth;
+      const scrollHeight = node.scrollHeight || node.offsetHeight;
+
+      const dataUrl = await toPng(node, {
+        backgroundColor: "#0a0a0a",
+        pixelRatio: 2,
+        cacheBust: true,
+        width: Math.max(scrollWidth, 1000),
+        height: Math.max(scrollHeight, 600),
+        style: {
+          overflow: "visible",
+          maxWidth: "none",
+          width: `${Math.max(scrollWidth, 1000)}px`,
+          height: `${Math.max(scrollHeight, 600)}px`,
+        },
+      });
+
+      setGeneratedImageUrl(dataUrl);
+    } catch (err) {
+      console.error("Failed to capture tree diagram image:", err);
+      alert("Failed to render tree image. Please try again.");
+    } finally {
+      setCapturing(false);
+    }
+  };
+
   const labelToIndex = (label: string): number => {
     if (label.length === 1) return label.charCodeAt(0) - 65;
     const first = (label.charCodeAt(0) - 65 + 1) * 26;
@@ -64,13 +108,15 @@ export default function TreeManagement({ initData }: { initData?: string }) {
 
   if (loading) return <LoadingScreen />;
 
-  // Group nodes by level to display hierarchy nicely
+  // Group nodes by level to display hierarchy nicely (only active users)
   const levels: Record<number, any[]> = {};
   if (treeData?.nodes) {
-    treeData.nodes.forEach((node: any) => {
-      if (!levels[node.level]) levels[node.level] = [];
-      levels[node.level].push(node);
-    });
+    treeData.nodes
+      .filter((node: any) => node.user && node.user.status === "ACTIVE" && node.user.active !== false)
+      .forEach((node: any) => {
+        if (!levels[node.level]) levels[node.level] = [];
+        levels[node.level].push(node);
+      });
   }
 
   return (
@@ -83,19 +129,43 @@ export default function TreeManagement({ initData }: { initData?: string }) {
           </h2>
           <p className="text-gray-500 text-sm">የአባላት የጥሪ ቅደም ተከተል ዝርዝር</p>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#166534] text-white rounded-lg hover:bg-green-900 transition-all shadow-lg disabled:opacity-50 font-medium active:scale-95"
-        >
-          <RefreshCw
-            className={`w-4 h-4 ${generating ? "animate-spin" : ""}`}
-          />
-          Generate Random Tree
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          {treeData?.nodes?.length > 0 && (
+            <button
+              onClick={handleOpenSendModal}
+              disabled={capturing || generating}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all shadow-md active:scale-95 disabled:opacity-50 font-medium text-sm"
+            >
+              {capturing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating Image...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Send Image to Telegram (ላክ)
+                </>
+              )}
+            </button>
+          )}
+          <button
+            onClick={handleGenerate}
+            disabled={generating || capturing}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#166534] text-white rounded-lg hover:bg-green-900 transition-all shadow-lg disabled:opacity-50 font-medium active:scale-95 text-sm"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${generating ? "animate-spin" : ""}`}
+            />
+            Generate Random Tree
+          </button>
+        </div>
       </div>
 
-      <div className="bg-[#0a0a0a] min-h-[600px] overflow-auto p-12 custom-scrollbar">
+      <div
+        ref={treeContainerRef}
+        className="bg-[#0a0a0a] min-h-[600px] overflow-auto p-12 custom-scrollbar"
+      >
         {!treeData?.nodes?.length ? (
           <div className="flex flex-col items-center justify-center h-full py-20 text-gray-500">
             <Network className="w-16 h-16 mb-4 opacity-20" />
@@ -179,6 +249,14 @@ export default function TreeManagement({ initData }: { initData?: string }) {
           </div>
         )}
       </div>
+
+      {/* Send Tree Image Modal */}
+      <SendTreeImageModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        imageUrl={generatedImageUrl}
+        initData={initData}
+      />
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {

@@ -41,7 +41,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const users = await prisma.user.findMany({ where: { status: "ACTIVE" } });
+    const users = await prisma.user.findMany({
+      where: {
+        status: "ACTIVE",
+        active: true,
+      },
+    });
 
     // Ensure at least someone is available
     if (users.length === 0) {

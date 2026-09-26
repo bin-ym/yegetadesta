@@ -1,14 +1,19 @@
 "use client";
 
-import { BookOpen, Calendar } from "lucide-react";
+import { BookOpen, Calendar, Phone, UserPlus, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { getCurrentWeekEthiopianDates } from "@/lib/ethiopian-calendar";
 
 export default function MinbabatPage() {
+  const router = useRouter();
   const [selectedDay, setSelectedDay] = useState("እሁድ");
   const [weekDates, setWeekDates] = useState<{ [key: string]: any }>({});
   const [readings, setReadings] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [userStatus, setUserStatus] = useState<"loading" | "registered" | "none" | "pending">("loading");
+  const [linkingPhone, setLinkingPhone] = useState(false);
+  const [linkMessage, setLinkMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Get Ethiopian dates for current week
@@ -22,6 +27,9 @@ export default function MinbabatPage() {
     const mondayBasedDay = gregorianDay === 0 ? 6 : gregorianDay - 1; // Convert to Monday = 0
     setSelectedDay(dayNames[mondayBasedDay]);
 
+    // Check user status
+    checkUserStatus();
+
     // Fetch readings data
     fetch("/api/admin/minbabat")
       .then((res) => res.json())
@@ -34,6 +42,87 @@ export default function MinbabatPage() {
         setLoading(false);
       });
   }, []);
+
+  const checkUserStatus = async () => {
+    try {
+      const hasTelegramData =
+        typeof window !== "undefined" && window.Telegram?.WebApp?.initData;
+
+      if (!hasTelegramData) {
+        setUserStatus("none");
+        return;
+      }
+
+      const initData = window.Telegram?.WebApp?.initData || "";
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }),
+      });
+
+      const data = await response.json();
+
+      if (data.user) {
+        setUserStatus("registered");
+      } else if (data.pending) {
+        setUserStatus("pending");
+        setLinkMessage("⏳ Your request is pending approval from Super Admin.");
+      } else {
+        setUserStatus("none");
+      }
+    } catch {
+      setUserStatus("none");
+    }
+  };
+
+  const handleJoinRequest = async () => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) {
+      setLinkMessage("Please open this page in Telegram to join.");
+      return;
+    }
+
+    setLinkingPhone(true);
+    setLinkMessage(null);
+
+    try {
+      const granted: boolean = await (tg as any).requestContact();
+      
+      if (granted) {
+        const phone = (tg.initDataUnsafe?.user as any)?.phone_number;
+        if (phone) {
+          const initData = tg.initData || "";
+
+          const response = await fetch("/api/auth/link-phone", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initData, phoneNumber: phone }),
+          });
+
+          const data = await response.json();
+
+          if (data.linked) {
+            setLinkMessage("✅ Account linked! You can now access the Call Tree.");
+            setUserStatus("registered");
+          } else if (data.pending) {
+            setUserStatus("pending");
+            setLinkMessage(null);
+          } else {
+            setLinkMessage("❌ Could not link. Contact the admin.");
+          }
+        } else {
+          setLinkMessage("Could not get your phone number. Try again.");
+        }
+      } else {
+        setLinkMessage("Phone sharing was cancelled.");
+      }
+      setLinkingPhone(false);
+    } catch (err) {
+      console.error("Phone request error:", err);
+      setLinkMessage("Failed to request phone number. Please try again.");
+      setLinkingPhone(false);
+    }
+  };
 
   const days = ["ሰኞ", "ማክሰኞ", "ረቡዕ", "ሐሙስ", "አርብ", "ቅዳሜ", "እሁድ"];
   const categories = ["የቅዱስ ጳውሎስ መልዕክት", "መልዕክታት", "የሐዋሪያት ስራ", "ወንጌል"];
@@ -64,6 +153,68 @@ export default function MinbabatPage() {
   return (
     <div className="min-h-screen pb-20 bg-gray-50">
       <div className="max-w-2xl mx-auto p-4 space-y-4">
+        {/* Pending state banner for users who already sent a request */}
+        {userStatus === "pending" && (
+          <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl shadow-lg shadow-orange-500/20 p-5 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Request Pending</h3>
+                <p className="text-orange-100 text-sm">ጥያቄዎ በመጠባበቅ ላይ ነው</p>
+              </div>
+            </div>
+            <p className="text-orange-50 text-sm">
+              Your join request has been submitted and is waiting for Super Admin approval.
+            </p>
+          </div>
+        )}
+
+        {/* CTA Banner for unregistered users */}
+        {userStatus === "none" && (
+          <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl shadow-lg shadow-green-500/20 p-5 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <Phone className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Join the Call Tree</h3>
+                <p className="text-green-200 text-sm">ምደዋወያ ይቀላቀሉ</p>
+              </div>
+            </div>
+            <p className="text-green-100 text-sm mb-4">
+              Connect with your church community through daily prayer calls.
+            </p>
+            <button
+              onClick={handleJoinRequest}
+              disabled={linkingPhone}
+              className="w-full bg-white text-green-700 font-semibold py-3 rounded-xl hover:bg-green-50 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+            >
+              <UserPlus className="w-5 h-5" />
+              {linkingPhone ? "Connecting..." : "Send Join Request — ይቀላቀሉ"}
+            </button>
+            {linkMessage && (
+              <div className="mt-3 p-3 bg-white/15 rounded-lg text-sm text-center">
+                {linkMessage}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Success message after linking */}
+        {linkMessage && userStatus === "registered" && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <p className="text-green-800 font-medium">{linkMessage}</p>
+            <button
+              onClick={() => router.push("/")}
+              className="mt-3 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-all"
+            >
+              Go to Call Tree
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg shadow-lg p-6 text-white">
           <div className="flex items-center gap-3 mb-2">

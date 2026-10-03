@@ -154,7 +154,7 @@ export function getEthiopianWeekInfo(date: Date = new Date()): {
         ethYear: ethDate.year,
         ethMonth: ethDate.month,
         ethDay: ethDate.day,
-        formatted: `ሳምንት ${ethWeek}, ${ethDate.year} ዓ.ም. (${ethDate.month})`,
+        formatted: `${ethDate.month}, ${ethDate.year} ዓ.ም.\n\n ${ethWeek}ኛ ሳምንት`,
     };
 }
 

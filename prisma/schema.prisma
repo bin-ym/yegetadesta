@@ -22,6 +22,8 @@ model User {
   role           Role @default(MEMBER)
 
   status         MemberStatus @default(ACTIVE)
+  deactivationReason String?
+  deactivationReasonRequestedAt DateTime?
 
   active         Boolean @default(true)
 

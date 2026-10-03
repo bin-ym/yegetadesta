@@ -11,15 +11,17 @@ import {
   Shield,
   UserCheck,
   Activity,
+  Send,
 } from "lucide-react";
 
 interface User {
   id: string;
-  telegramId: string;
+  telegramId: string | null;
   fullName: string;
   baptismName: string | null;
   phoneNumber: string | null;
   address: string | null;
+  deactivationReason: string | null;
   role: string;
   status: string;
 }
@@ -49,6 +51,8 @@ export default function UserManagement({
 }: Props) {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [usersError, setUsersError] = useState("");
+  const [askingUserId, setAskingUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -84,13 +88,44 @@ export default function UserManagement({
       const res = await fetch("/api/admin/users", {
         headers: initData ? { "x-telegram-init-data": initData } : {},
       });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-        setFilteredUsers(data);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        setUsersError(error.details || error.error || "Unable to load users.");
+        return;
       }
+
+      const data = await res.json();
+      setUsers(data);
+      setFilteredUsers(data);
+      setUsersError("");
     } catch (err) {
       console.error("Fetch users error:", err);
+      setUsersError("Unable to connect to the users service.");
+    }
+  };
+
+  const handleAskInTelegram = async (user: User) => {
+    setAskingUserId(user.id);
+    try {
+      const res = await fetch("/api/admin/users/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(initData ? { "x-telegram-init-data": initData } : {}),
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Could not send the Telegram message.");
+        return;
+      }
+      alert(`Continue prompt sent to ${user.fullName} in Telegram.`);
+    } catch (err) {
+      console.error("Ask in Telegram error:", err);
+      alert("Could not send the Telegram message.");
+    } finally {
+      setAskingUserId(null);
     }
   };
 
@@ -184,7 +219,7 @@ export default function UserManagement({
       baptismName: user.baptismName || "",
       phoneNumber: user.phoneNumber || "",
       address: user.address || "",
-      telegramId: user.telegramId,
+      telegramId: user.telegramId || "",
       status: user.status || "ACTIVE",
     });
     setShowEditModal(true);
@@ -294,7 +329,14 @@ export default function UserManagement({
 
       {/* Users List */}
       <div className="space-y-2">
-        {filteredUsers.length === 0 ? (
+        {usersError ? (
+          <div className="bg-red-50 rounded-xl border border-red-200 p-8 text-center">
+            <h3 className="text-lg font-semibold text-red-800 mb-1">
+              Unable to load users
+            </h3>
+            <p className="text-sm text-red-700">{usersError}</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
               <Users className="w-8 h-8 text-gray-400" />
@@ -303,7 +345,7 @@ export default function UserManagement({
             <p className="text-sm text-gray-500">
               {searchQuery
                 ? "Try a different search term"
-                : "Click 'Add User' to get started"}
+                : "No users are registered in the connected database yet."}
             </p>
           </div>
         ) : (
@@ -351,6 +393,14 @@ export default function UserManagement({
                           <span className="truncate hidden md:inline">{user.address}</span>
                         )}
                         <span className="text-gray-300">ID: {user.telegramId}</span>
+                        {user.deactivationReason && (
+                          <span
+                            className="text-amber-700 truncate"
+                            title={user.deactivationReason}
+                          >
+                            Reason: {user.deactivationReason}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -376,13 +426,25 @@ export default function UserManagement({
                           <Edit className="w-4 h-4" />
                         </button>
                         {isSuperAdmin && (
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
-                            title="Delete user"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleAskInTelegram(user)}
+                              disabled={askingUserId === user.id || !user.telegramId || user.telegramId.startsWith("pending_")}
+                              className="flex items-center gap-1.5 px-2 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                              title={user.telegramId && !user.telegramId.startsWith("pending_") ? "Ask in Telegram" : "Telegram account is not linked"}
+                              aria-label={`Ask ${user.fullName} in Telegram whether they want to continue`}
+                            >
+                              <Send className="w-4 h-4" />
+                              <span className="hidden lg:inline">Ask in Telegram</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                              title="Delete user"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     )}

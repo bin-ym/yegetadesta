@@ -38,8 +38,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(users);
   } catch (error) {
     console.error("Fetch users error:", error);
+    const details =
+      process.env.NODE_ENV === "development" && error instanceof Error
+        ? `${error.name}${"code" in error && typeof error.code === "string" ? ` (${error.code})` : ""}: ${error.message}`
+        : undefined;
     return NextResponse.json(
-      { error: "Failed to fetch users" },
+      {
+        error: "Failed to fetch users",
+        ...(details ? { details } : {}),
+      },
       { status: 500 },
     );
   }

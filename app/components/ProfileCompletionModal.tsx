@@ -7,18 +7,25 @@ import { User, Phone, MapPin, CheckCircle, Type } from "lucide-react";
 
 interface Props {
   initData: string;
+  profile: {
+    fullName: string;
+    baptismName: string | null;
+    phoneNumber: string | null;
+    address: string | null;
+  };
   onCompleteAction: () => void;
 }
 
 export default function ProfileCompletionModal({
   initData,
+  profile,
   onCompleteAction,
 }: Props) {
   const [formData, setFormData] = useState({
-    fullName: "",
-    baptismName: "",
-    phoneNumber: "",
-    address: "",
+    fullName: profile.fullName,
+    baptismName: profile.baptismName || "",
+    phoneNumber: profile.phoneNumber || "",
+    address: profile.address || "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

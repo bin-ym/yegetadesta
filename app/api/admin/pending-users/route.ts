@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
       // SEND BOT NOTIFICATION
       await sendTelegramMessage(
         pendingUser.telegramId,
-        `<b>እንኳን ደስ አለዎት!</b> 🎉\n\nየቅዳሴ ጥሪ አገልግሎት ጥያቄዎ ተቀባይነት አግኝቷል። አሁን ወደ አፕሊኬሽኑ በመግባት መረጃዎን ወደ ፕሮፋይልዎ አስገብተው አገልግሎቱን ይጠቀሙ።\n\n✝ እግዚአብሔር አገልግሎታችንን ይቀበልልን።`,
+        `<b>እንኳን ደስ አለዎት!</b> 🎉\n\nየቅዳሴ ጥሪ አገልግሎት ጥያቄዎ ተቀባይነት አግኝቷል። አሁን ወደ አፕሊኬሽኑ በመግባት መረጃዎን አስገብተው አገልግሎቱን ይጠቀሙ።\n\n✝ እግዚአብሔር አገልግሎታችንን ይቀበልልን።`,
       );
 
       return NextResponse.json({
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
       // SEND BOT NOTIFICATION
       await sendTelegramMessage(
         pendingUser.telegramId,
-        `የቅዳሴ ጥሪ አገልግሎት ጥያቄዎ በSUPER ADMIN ውድቅ ተደርጓል። ለበለጠ መረጃ እባክዎ አስተዳዳሪዎችን ያነጋግሩ።`,
+        `የቅዳሴ ጥሪ አገልግሎት ጥያቄዎ ውድቅ ተደርጓል። ለበለጠ መረጃ እባክዎ አስተዳዳሪዎችን ያነጋግሩ።`,
       );
 
       return NextResponse.json({

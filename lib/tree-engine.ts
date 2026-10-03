@@ -296,7 +296,10 @@ export async function createWeeklyCycle() {
 // Auto-integrate single user
 // ────────────────────────────────────────────────────────────────
 
-export async function integrateUserIntoTree(userId: string) {
+export async function integrateUserIntoTree(
+  userId: string,
+  retryCount = 0,
+) {
   // Only integrate users who are ACTIVE
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -325,11 +328,20 @@ export async function integrateUserIntoTree(userId: string) {
 
   if (existing) return existing;
 
-  const nodeCount = await prisma.treeNode.count({
+  const existingPositions = await prisma.treeNode.findMany({
     where: { cycleId: cycle.id },
+    select: { position: true },
   });
 
-  const info = calculateNodeInfo(nodeCount);
+  const occupiedPositions = new Set(
+    existingPositions.map((node) => node.position),
+  );
+  let nodeIndex = 0;
+  while (occupiedPositions.has(positionLabel(nodeIndex))) {
+    nodeIndex += 1;
+  }
+
+  const info = calculateNodeInfo(nodeIndex);
 
   let parentNodeId = null;
   if (info.parentIndex >= 0) {
@@ -340,15 +352,30 @@ export async function integrateUserIntoTree(userId: string) {
     parentNodeId = parentNode?.id || null;
   }
 
-  const newNode = await prisma.treeNode.create({
-    data: {
-      cycleId: cycle.id,
-      userId: userId,
-      position: info.position,
-      level: info.level,
-      parentNodeId: parentNodeId,
-    },
-  });
+  let newNode;
+  try {
+    newNode = await prisma.treeNode.create({
+      data: {
+        cycleId: cycle.id,
+        userId: userId,
+        position: info.position,
+        level: info.level,
+        parentNodeId: parentNodeId,
+      },
+    });
+  } catch (error) {
+    if (
+      retryCount < 3 &&
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return integrateUserIntoTree(userId, retryCount + 1);
+    }
+
+    throw error;
+  }
 
   if (parentNodeId) {
     await prisma.callEdge.create({

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateTelegramWebAppData } from "@/lib/telegram-auth";
+import {
+  ADMIN_SESSION_COOKIE,
+  verifyAdminSession,
+} from "@/lib/admin-session";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -11,11 +15,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (initData === "web-bypass-token") {
-      if (process.env.NODE_ENV !== "development") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    } else {
+    const isDevelopmentBypass =
+      initData === "web-bypass-token" && process.env.NODE_ENV === "development";
+    if (initData && initData !== "web-bypass-token") {
       const validation = validateTelegramWebAppData(initData);
       if (!validation.valid || !validation.user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,21 +32,52 @@ export async function POST(req: NextRequest) {
           { status: 403 },
         );
       }
+    } else if (!isDevelopmentBypass) {
+      const role = await verifyAdminSession(
+        req.cookies.get(ADMIN_SESSION_COOKIE)?.value,
+      );
+      if (role !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
-    const { userId } = await req.json();
-    if (typeof userId !== "string" || !userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
-    }
+    const { userId, audience } = await req.json();
+    let recipients: { id: string; telegramId: string | null }[];
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    if (!user.telegramId || user.telegramId.startsWith("pending_")) {
+    if (typeof userId === "string" && userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, telegramId: true },
+      });
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      recipients = [user];
+    } else if (audience === "all" || audience === "ACTIVE" || audience === "INACTIVE") {
+      const users = await prisma.user.findMany({
+        where: {
+          telegramId: { not: null },
+          ...(audience === "all" ? {} : { status: audience }),
+        },
+        select: { id: true, telegramId: true },
+      });
+      recipients = users.filter(
+        (user) => user.telegramId && !user.telegramId.startsWith("pending_"),
+      );
+    } else {
       return NextResponse.json(
-        { error: "This user has not linked a Telegram account" },
+        { error: "Choose a user or an All, Active, or Inactive audience" },
         { status: 400 },
+      );
+    }
+
+    recipients = recipients.filter(
+      (user) => user.telegramId && !user.telegramId.startsWith("pending_"),
+    );
+    if (recipients.length === 0) {
+      return NextResponse.json(
+        { error: "No linked Telegram users match this audience" },
+        { status: 404 },
       );
     }
     if (!BOT_TOKEN) {
@@ -54,43 +87,61 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const telegramResponse = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    chat_id: user.telegramId,
-    text:
-      "🙏 የየጌታ ደስታ የቅዳሴ ጥሪ አገልግሎቱን መጠቀም ይፈልጋሉ?\n\n" +
-      "አገልግሎቱን ለመቀጠል ከፈለጉ “አዎ” የሚለውን ይጫኑ።\n\n" +
-      "ለመተው ከፈለጉ “አይ” የሚለውን ይጫኑ።",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "አዎ፣ መቀጠል እፈልጋለሁ",
-            callback_data: `member_status:${user.id}:yes`,
-          },
-          {
-            text: "አይ፣ መቀጠል አልፈልግም",
-            callback_data: `member_status:${user.id}:no`,
-          },
-        ],
-      ],
-    },
-  }),
-      },
-    );
-    const telegramResult = await telegramResponse.json().catch(() => ({}));
-    if (!telegramResponse.ok || !telegramResult.ok) {
-      return NextResponse.json(
-        { error: telegramResult.description || "Telegram could not deliver the message" },
-        { status: 502 },
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (let index = 0; index < recipients.length; index += 20) {
+      const batch = recipients.slice(index, index + 20);
+      const results = await Promise.all(
+        batch.map(async (user) => {
+          try {
+            const telegramResponse = await fetch(
+              `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: user.telegramId,
+                  text:
+                    "🙏 የየጌታ ደስታ የቅዳሴ ጥሪ አገልግሎቱን መጠቀም ይፈልጋሉ?\n\n" +
+                    "አገልግሎቱን ለመቀጠል ከፈለጉ “አዎ” የሚለውን ይጫኑ።\n\n" +
+                    "ለመተው ከፈለጉ “አይ” የሚለውን ይጫኑ።",
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: "አዎ፣ መቀጠል እፈልጋለሁ",
+                          callback_data: `member_status:${user.id}:yes`,
+                        },
+                        {
+                          text: "አይ፣ መቀጠል አልፈልግም",
+                          callback_data: `member_status:${user.id}:no`,
+                        },
+                      ],
+                    ],
+                  },
+                }),
+              },
+            );
+            const telegramResult = await telegramResponse.json().catch(() => ({}));
+            return telegramResponse.ok && telegramResult.ok === true;
+          } catch (error) {
+            console.error("Telegram ask delivery failed:", error);
+            return false;
+          }
+        }),
       );
+
+      sentCount += results.filter(Boolean).length;
+      failedCount += results.length - results.filter(Boolean).length;
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: failedCount === 0,
+      total: recipients.length,
+      sentCount,
+      failedCount,
+    });
   } catch (error) {
     console.error("Ask user in Telegram error:", error);
     return NextResponse.json(

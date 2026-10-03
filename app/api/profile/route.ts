@@ -1,6 +1,7 @@
 // app/api/profile/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { validateTelegramWebAppData } from "@/lib/telegram-auth";
 import { integrateUserIntoTree } from "@/lib/tree-engine";
@@ -54,29 +55,46 @@ export async function PATCH(req: NextRequest) {
     // number and address all filled in), the user becomes ACTIVE and is
     // integrated into the current call tree cycle.
     const profileComplete = Boolean(
-      merged.baptismName && merged.phoneNumber && merged.address,
+      merged.fullName.trim() &&
+        merged.baptismName?.trim() &&
+        merged.phoneNumber?.trim() &&
+        merged.address?.trim(),
     );
 
-    if (profileComplete && updatedUser.status === "INACTIVE") {
-      const activatedUser = await prisma.user.update({
+    let finalUser = updatedUser;
+
+    if (
+      profileComplete &&
+      updatedUser.status === "INACTIVE" &&
+      !updatedUser.participationOptOut
+    ) {
+      finalUser = await prisma.user.update({
         where: { id: updatedUser.id },
-        data: { status: "ACTIVE" },
+        data: { status: "ACTIVE", active: true },
       });
-
-      // Add to the current cycle's tree (same behavior as before)
-      try {
-        await integrateUserIntoTree(updatedUser.id);
-      } catch (treeErr) {
-        console.error("Auto-add tree on activation error:", treeErr);
-      }
-
-      return NextResponse.json(activatedUser);
     }
 
-    return NextResponse.json(updatedUser);
-  } catch (error: any) {
-    if (error?.code === "P2002") {
-      const field = error?.meta?.target?.[0] || "field";
+    if (
+      profileComplete &&
+      finalUser.status === "ACTIVE" &&
+      finalUser.active &&
+      !finalUser.participationOptOut
+    ) {
+      try {
+        await integrateUserIntoTree(finalUser.id);
+      } catch (treeErr) {
+        console.error("Auto-add tree after profile update error:", treeErr);
+      }
+    }
+
+    return NextResponse.json(finalUser);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const target = error.meta?.target;
+      const field = Array.isArray(target) ? target[0] : "field";
       return NextResponse.json(
         { error: `The ${field} is already used by another user.` },
         { status: 409 },

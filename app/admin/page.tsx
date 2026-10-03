@@ -88,42 +88,38 @@ export default function AdminPage() {
     }
   };
 
-  const handleWebLogin = (e: React.FormEvent) => {
+  const handleWebLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
 
-    if (loginRole === "SUPER_ADMIN" && password === "superPass") {
+    try {
+      const response = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: loginRole, password }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setLoginError(result.error || "Admin login failed");
+        return;
+      }
+
       setIsAuthenticated(true);
       setCurrentUser({
-        id: "web-super-admin",
+        id: `web-${loginRole.toLowerCase()}`,
         telegramId: "0",
-        fullName: "Super Admin",
+        fullName: loginRole === "SUPER_ADMIN" ? "Super Admin" : "Admin",
         baptismName: null,
         phoneNumber: null,
         address: null,
-        role: "SUPER_ADMIN",
+        role: loginRole,
         status: "ACTIVE",
         joinedAt: new Date().toISOString(),
       });
       setShowLogin(false);
       setLoading(false);
-    } else if (loginRole === "ADMIN" && password === "adPass") {
-      setIsAuthenticated(true);
-      setCurrentUser({
-        id: "web-admin",
-        telegramId: "0",
-        fullName: "Admin",
-        baptismName: null,
-        phoneNumber: null,
-        address: null,
-        role: "ADMIN",
-        status: "ACTIVE",
-        joinedAt: new Date().toISOString(),
-      });
-      setShowLogin(false);
-      setLoading(false);
-    } else {
-      setLoginError("Invalid password");
+    } catch {
+      setLoginError("Unable to connect to the admin login service");
     }
   };
 
@@ -185,16 +181,6 @@ export default function AdminPage() {
             >
               Login
             </button>
-
-            {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-800">
-                <strong>Demo Credentials:</strong>
-                <br />
-                Super Admin: superPass
-                <br />
-                Admin: adPass
-              </p>
-            </div> */}
           </form>
         </div>
       </div>

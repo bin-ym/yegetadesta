@@ -9,6 +9,7 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "migrate-data": "tsx scripts/migrate-to-db.ts",
+    "db:sync-admin-accounts": "tsx scripts/sync-admin-accounts.ts",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev"
   },

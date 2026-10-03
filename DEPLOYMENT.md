@@ -59,15 +59,23 @@ DATABASE_URL="postgresql://..."
 TELEGRAM_BOT_TOKEN="123456789:ABC..."
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 CRON_SECRET="your-random-secret-123"
+ADMIN_SESSION_SECRET="a-long-random-secret"
+ADMIN_WEB_PASSWORD="your-admin-password"
+SUPER_ADMIN_WEB_PASSWORD="your-super-admin-password"
 NODE_ENV="development"
 ```
 
 5. Setup database:
 ```bash
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 npx prisma db seed
+npm run db:sync-admin-accounts
 ```
+
+The admin account sync reads `ADMIN_WEB_PASSWORD` and
+`SUPER_ADMIN_WEB_PASSWORD`, then stores only scrypt hashes in the
+`AdminAccount` table.
 
 6. Run development server:
 ```bash
@@ -87,14 +95,20 @@ npm run dev
    - `TELEGRAM_BOT_TOKEN`
    - `NEXT_PUBLIC_APP_URL` (will be your Vercel URL)
    - `CRON_SECRET`
+    - `ADMIN_SESSION_SECRET` (use a long random value)
+    - `ADMIN_WEB_PASSWORD`
+    - `SUPER_ADMIN_WEB_PASSWORD`
 
 5. Deploy!
 
-6. After deployment, copy your Vercel URL (e.g., `https://your-app.vercel.app`)
+6. Run `npm run db:sync-admin-accounts` once from an environment configured
+  with the production database and both admin password variables.
 
-7. Update `NEXT_PUBLIC_APP_URL` in Vercel environment variables with your actual URL
+7. After deployment, copy your Vercel URL (e.g., `https://your-app.vercel.app`)
 
-8. Redeploy
+8. Update `NEXT_PUBLIC_APP_URL` in Vercel environment variables with your actual URL
+
+9. Redeploy
 
 ## Step 5: Register Telegram WebApp
 

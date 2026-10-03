@@ -20,13 +20,18 @@ import { getEthiopianWeekInfo } from "@/lib/ethiopian-calendar";
 interface DashboardProps {
   data: DashboardData;
   initData: string;
+  openProfileEditor?: boolean;
 }
 
-export default function Dashboard({ data, initData }: DashboardProps) {
+export default function Dashboard({
+  data,
+  initData,
+  openProfileEditor = false,
+}: DashboardProps) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [pastCycles, setPastCycles] = useState<any[]>([]);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(openProfileEditor);
 
   const {
     user,
@@ -62,6 +67,8 @@ export default function Dashboard({ data, initData }: DashboardProps) {
 
   // Robust profile completeness check (safe for null/undefined)
   const isProfileIncomplete =
+    !user.fullName ||
+    user.fullName.trim() === "" ||
     !user.baptismName ||
     (user.baptismName || "").trim() === "" ||
     !user.phoneNumber ||
@@ -100,6 +107,7 @@ export default function Dashboard({ data, initData }: DashboardProps) {
   const ProfileModalElement = shouldShowModal ? (
     <ProfileCompletionModal
       initData={initData}
+      profile={user}
       onCompleteAction={() => {
         setShowProfileModal(false);
         window.location.reload();

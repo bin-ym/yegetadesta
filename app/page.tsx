@@ -17,6 +17,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [notRegistered, setNotRegistered] = useState(false);
+  const [openProfileEditor, setOpenProfileEditor] = useState(false);
 
   useEffect(() => {
     // Check if running in Telegram
@@ -59,6 +60,9 @@ export default function Home() {
           throw new Error("Failed to fetch dashboard");
         }
 
+        setOpenProfileEditor(
+          new URLSearchParams(window.location.search).get("editProfile") === "1",
+        );
         setDashboardData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -118,5 +122,11 @@ export default function Home() {
     return <LoadingScreen />;
   }
 
-  return <Dashboard data={dashboardData} initData={initData || ""} />;
+  return (
+    <Dashboard
+      data={dashboardData}
+      initData={initData || ""}
+      openProfileEditor={openProfileEditor}
+    />
+  );
 }

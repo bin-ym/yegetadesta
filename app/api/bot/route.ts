@@ -64,7 +64,7 @@ interface TelegramApiResponse<T = unknown> {
 // -----------------------------------------------------------------------------
 
 const START_MESSAGE =
-  "✝️ ቅዳሴ ጥሪ - Kidase Call\n\n" +
+  "✝️ የጌታ ደስታ የቅዳሴ ጥሪ\n\n" +
   "እንኳን ወደ የጌታ ደስታ ቅዳሴ ጥሪ አገልግሎት በሰላም መጡ።\n\n" +
   "አፕሊኬሽኑን ለመክፈት ከታች ያለውን አዝራር ይጫኑ።";
 
@@ -213,6 +213,7 @@ async function handleStatusCallback(
           participationOptOut: false,
           deactivationReason: null,
           deactivationReasonRequestedAt: null,
+          continuationPromptMessageId: null,
         },
       });
     } catch (error) {
@@ -233,7 +234,7 @@ async function handleStatusCallback(
               inline_keyboard: [
                 [
                   {
-                    text: "ፕሮፋይሌን ሙላ / አዘምን",
+                    text: "መረጃዎን ይሙሉ",
                     web_app: { url: profileUrl.toString() },
                   },
                 ],
@@ -247,7 +248,7 @@ async function handleStatusCallback(
       await telegramApi("editMessageText", {
         chat_id: callbackQuery.message.chat.id,
         message_id: callbackQuery.message.message_id,
-        text: "ፕሮፋይልዎን ያጠናቅቁ፤ ከዚያ አገልግሎቱን መቀጠል ይችላሉ።",
+        text: "🙏 ምላሽዎ ተቀብለናል።",
         reply_markup: { inline_keyboard: [] },
       });
     }
@@ -266,6 +267,7 @@ async function handleStatusCallback(
         participationOptOut: !isActive,
         deactivationReason: null,
         deactivationReasonRequestedAt: isActive ? null : new Date(),
+        continuationPromptMessageId: null,
       },
     });
 
@@ -290,32 +292,29 @@ async function handleStatusCallback(
     console.error("Update call tree after status response error:", error);
   }
 
-  await sendMessage(
-    chatId,
-    isActive
-      ? "🙏 እናመሰግናለን!\n\n" +
-          "የየጌታ ደስታ የቅዳሴ ጥሪ አገልግሎቱን ለመቀጠል ስለወሰኑ።\n\n" +
-          "✝️ እግዚአብሔር አገልግሎታችንን ይቀበልልን።\n\n" +
-          "እባክዎ የግል መረጃዎን ይሙሉ ወይም ያረጋግጡ።"
-      : "🙏 እሺ፣ ስለነበረዎት ተሳትፎ እናመሰግናለን።\n\n" +
-          "ከፈለጉ በማንኛውም ጊዜ ተመልሰው አገልግሎቱን መጀመር ይችላሉ። ✝️",
-    isActive && profileUrl
-      ? {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "ፕሮፋይሌን ሙላ / አዘምን",
-                  web_app: { url: profileUrl.toString() },
-                },
+  if (isActive) {
+    await sendMessage(
+      chatId,
+      "🙏 እናመሰግናለን!\n\n" +
+        "የየጌታ ደስታ የቅዳሴ ጥሪ አገልግሎቱን ለመቀጠል ስለወሰኑ።\n\n" +
+        "✝️ እግዚአብሔር አገልግሎታችንን ይቀበልልን።\n\n" +
+        "እባክዎ የግል መረጃዎን ይሙሉ ወይም ያረጋግጡ።",
+      profileUrl
+        ? {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "መረጃዎን ይሙሉ",
+                    web_app: { url: profileUrl.toString() },
+                  },
+                ],
               ],
-            ],
-          },
-        }
-      : {},
-  );
-
-  if (!isActive) {
+            },
+          }
+        : {},
+    );
+  } else {
     await sendMessage(
       chatId,
       "📝 እባክዎ አገልግሎቱን ላለመቀጠል የወሰኑበትን ምክንያት ይጻፉልን።",
@@ -333,8 +332,10 @@ async function handleStatusCallback(
       chat_id: callbackQuery.message.chat.id,
       message_id: callbackQuery.message.message_id,
       text:
-        "🙏 ምላሽዎ ተረጋግጧል።\n\n" +
-        `የአባልነት ሁኔታዎ አሁን ${status} ሆኗል።`,
+        isActive
+          ? "🙏 ምላሽዎ ተረጋግጧል።\n\n" +
+            `የአባልነት ሁኔታዎ አሁን ${status} ሆኗል።`
+          : "📝 ምክንያትዎን በመልእክት ይላኩ።",
       reply_markup: {
         inline_keyboard: [],
       },
@@ -403,7 +404,11 @@ async function handleDeactivationReason(
   if (result.count === 1) {
     await sendMessage(
       message.chat.id,
-      "🙏 ምክንያትዎን ስላጋሩን እናመሰግናለን።",
+      "🙏 ምክንያትዎን ስላጋሩን እናመሰግናለን።\n\n" +
+        "🙏 ምላሽዎ ተረጋግጧል።\n\n" +
+        "የአባልነት ሁኔታዎ አሁን INACTIVE ሆኗል።\n\n" +
+        "🙏 እሺ፣ ስለነበረዎት ተሳትፎ እናመሰግናለን።\n\n" +
+        "ከፈለጉ በማንኛውም ጊዜ ተመልሰው አገልግሎቱን መጀመር ይችላሉ። ✝️",
     );
   }
 }

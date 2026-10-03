@@ -8,6 +8,89 @@ import {
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+interface AskRecipient {
+  id: string;
+  telegramId: string | null;
+  continuationPromptMessageId: number | null;
+}
+
+const ASK_TEXT =
+  "🙏 የየጌታ ደስታ የቅዳሴ ጥሪ አገልግሎቱን መጠቀም ይፈልጋሉ?\n\n" +
+  "አገልግሎቱን ለመቀጠል ከፈለጉ “አዎ” የሚለውን ይጫኑ።\n\n" +
+  "ለመተው ከፈለጉ “አይ” የሚለውን ይጫኑ።";
+
+function askReplyMarkup(userId: string) {
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: "አዎ፣ መቀጠል እፈልጋለሁ",
+          callback_data: `member_status:${userId}:yes`,
+        },
+        {
+          text: "አይ፣ መቀጠል አልፈልግም",
+          callback_data: `member_status:${userId}:no`,
+        },
+      ],
+    ],
+  };
+}
+
+async function sendOrReplacePrompt(user: AskRecipient): Promise<boolean> {
+  if (!BOT_TOKEN || !user.telegramId) return false;
+
+  if (user.continuationPromptMessageId) {
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: user.telegramId,
+            message_id: user.continuationPromptMessageId,
+            text: ASK_TEXT,
+            reply_markup: askReplyMarkup(user.id),
+          }),
+        },
+      );
+      const result = await response.json().catch(() => ({}));
+      if (response.ok && result.ok) return true;
+      if (result.description === "Bad Request: message is not modified") {
+        return true;
+      }
+    } catch (error) {
+      console.error("Failed to replace unanswered Telegram prompt:", error);
+    }
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: user.telegramId,
+          text: ASK_TEXT,
+          reply_markup: askReplyMarkup(user.id),
+        }),
+      },
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok || !result.result?.message_id) return false;
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { continuationPromptMessageId: result.result.message_id },
+    });
+    return true;
+  } catch (error) {
+    console.error("Telegram ask delivery failed:", error);
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const initData = req.headers.get("x-telegram-init-data");
@@ -42,12 +125,16 @@ export async function POST(req: NextRequest) {
     }
 
     const { userId, audience } = await req.json();
-    let recipients: { id: string; telegramId: string | null }[];
+    let recipients: AskRecipient[];
 
     if (typeof userId === "string" && userId) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, telegramId: true },
+        select: {
+          id: true,
+          telegramId: true,
+          continuationPromptMessageId: true,
+        },
       });
       if (!user) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -59,7 +146,11 @@ export async function POST(req: NextRequest) {
           telegramId: { not: null },
           ...(audience === "all" ? {} : { status: audience }),
         },
-        select: { id: true, telegramId: true },
+        select: {
+          id: true,
+          telegramId: true,
+          continuationPromptMessageId: true,
+        },
       });
       recipients = users.filter(
         (user) => user.telegramId && !user.telegramId.startsWith("pending_"),
@@ -92,45 +183,7 @@ export async function POST(req: NextRequest) {
 
     for (let index = 0; index < recipients.length; index += 20) {
       const batch = recipients.slice(index, index + 20);
-      const results = await Promise.all(
-        batch.map(async (user) => {
-          try {
-            const telegramResponse = await fetch(
-              `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: user.telegramId,
-                  text:
-                    "🙏 የየጌታ ደስታ የቅዳሴ ጥሪ አገልግሎቱን መጠቀም ይፈልጋሉ?\n\n" +
-                    "አገልግሎቱን ለመቀጠል ከፈለጉ “አዎ” የሚለውን ይጫኑ።\n\n" +
-                    "ለመተው ከፈለጉ “አይ” የሚለውን ይጫኑ።",
-                  reply_markup: {
-                    inline_keyboard: [
-                      [
-                        {
-                          text: "አዎ፣ መቀጠል እፈልጋለሁ",
-                          callback_data: `member_status:${user.id}:yes`,
-                        },
-                        {
-                          text: "አይ፣ መቀጠል አልፈልግም",
-                          callback_data: `member_status:${user.id}:no`,
-                        },
-                      ],
-                    ],
-                  },
-                }),
-              },
-            );
-            const telegramResult = await telegramResponse.json().catch(() => ({}));
-            return telegramResponse.ok && telegramResult.ok === true;
-          } catch (error) {
-            console.error("Telegram ask delivery failed:", error);
-            return false;
-          }
-        }),
-      );
+      const results = await Promise.all(batch.map(sendOrReplacePrompt));
 
       sentCount += results.filter(Boolean).length;
       failedCount += results.length - results.filter(Boolean).length;

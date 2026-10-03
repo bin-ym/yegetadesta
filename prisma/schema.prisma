@@ -33,6 +33,7 @@ model User {
   participationOptOut Boolean @default(false)
   deactivationReason String?
   deactivationReasonRequestedAt DateTime?
+  continuationPromptMessageId Int?
 
   active         Boolean @default(true)
 
